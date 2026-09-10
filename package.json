@@ -14,8 +14,11 @@
   },
   "dependencies": {
     "@1inch/aqua": "https://github.com/1inch/aqua#6f05aa1ac2dcf701b0e086ad5e7606515f1fa454",
+    "@1inch/aqua-sdk": "^1.0.0",
+    "@1inch/sdk-core": "^1.0.0",
     "@1inch/solidity-utils": "6.9.7",
     "@1inch/swap-vm": "https://github.com/1inch/swap-vm#b44977a1c7744c9caa6b7974d9b638ed4983cfd3",
+    "@1inch/swap-vm-sdk": "^1.0.0",
     "@openzeppelin/contracts": "5.4.0"
   },
   "devDependencies": {
