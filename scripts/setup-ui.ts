@@ -123,7 +123,7 @@ async function main() {
     orderHash,
   };
 
-  const outPath = path.join(__dirname, "../../web/lib/deployment.json");
+  const outPath = path.join(__dirname, "../web/lib/deployment.json");
   fs.writeFileSync(outPath, JSON.stringify(deployment, null, 2));
   console.log(`Seeded maker ${makerAddr}, trader ${traderAddr}`);
   console.log(`Strategy ${orderHash} shipped. Wrote ${outPath}`);

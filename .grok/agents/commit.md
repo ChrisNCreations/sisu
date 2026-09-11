@@ -17,10 +17,10 @@ Steps:
 1. `git status` and `git diff` in `sisu/`. If there is nothing to commit, stop.
 2. Decide the tests gate from the diff:
    - Contracts or `test/`: `npx hardhat test` from `sisu/`.
-   - `app/`: typecheck or `npx next build` from `sisu/app`.
+    - `web/`: typecheck or `npm run build` from `web/`.
    - Docs/harness only: skip tests.
 3. If the gate fails, do not commit. Report the failure.
-4. Stage only intended source. Leave unstaged: `.env`, secrets, `node_modules`, `artifacts`, `cache`, `typechain-types`, `app/.next`, coverage, personal scratch files.
+4. Stage only intended source. Leave unstaged: `.env`, secrets, `node_modules`, `artifacts`, `cache`, `typechain-types`, `web/.next`, `web/lib/deployment.json`, coverage, personal scratch files.
 5. `git commit` with a conventional subject that names the completed step (`feat:`, `fix:`, `test:`, `chore:`). One commit. No `--amend` unless the user asked. No `git push`.
 6. Report the hash and subject.
 

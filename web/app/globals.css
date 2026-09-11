@@ -1,0 +1,102 @@
+@import "tailwindcss";
+
+@theme {
+  --color-void: #08090a;
+  --color-carbon: #0f1011;
+  --color-obsidian: #161718;
+  --color-graphite: #23252a;
+  --color-smoke: #383b3f;
+  --color-ash: #62666d;
+  --color-fog: #8a8f98;
+  --color-mist: #d0d6e0;
+  --color-bone: #e5e5e6;
+  --color-paper: #ffffff;
+  --color-acid-lime: #e4f222;
+  --color-pulse-green: #27a644;
+  --color-coral-red: #eb5757;
+  --color-signal-teal: #02b8cc;
+  --color-iris-violet: #6366f1;
+  --color-lavender: #8b5cf6;
+
+  --color-background: #08090a;
+  --color-foreground: #ffffff;
+  --color-card: #0f1011;
+  --color-card-foreground: #ffffff;
+  --color-popover: #161718;
+  --color-popover-foreground: #ffffff;
+  --color-primary: #e4f222;
+  --color-primary-foreground: #08090a;
+  --color-secondary: #161718;
+  --color-secondary-foreground: #d0d6e0;
+  --color-muted: #161718;
+  --color-muted-foreground: #8a8f98;
+  --color-accent: #161718;
+  --color-accent-foreground: #ffffff;
+  --color-destructive: #eb5757;
+  --color-border: #23252a;
+  --color-input: rgb(255 255 255 / 0.08);
+  --color-ring: #d0d6e0;
+
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains), ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  --radius-sm: 2px;
+  --radius-md: 6px;
+  --radius-lg: 12px;
+  --radius-xl: 12px;
+  --shadow-subtle: rgb(35, 37, 42) 0px 0px 0px 1px inset;
+  --shadow-cta: rgba(0, 0, 0, 0.01) 0px 5px 2px 0px,
+    rgba(0, 0, 0, 0.04) 0px 3px 2px 0px, rgba(0, 0, 0, 0.07) 0px 1px 1px 0px,
+    rgba(0, 0, 0, 0.08) 0px 0px 1px 0px;
+}
+
+:root {
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+html {
+  background: #08090a;
+  color: #ffffff;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  min-height: 100dvh;
+  background: #08090a;
+  color: #d0d6e0;
+  font-family: var(--font-sans);
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 1.5;
+  font-feature-settings: "cv01" on, "ss03" on, "zero" on;
+}
+
+* {
+  border-color: #23252a;
+}
+
+::selection {
+  background: color-mix(in srgb, #e4f222 28%, transparent);
+  color: #ffffff;
+}
+
+:focus-visible {
+  outline: 1px solid #d0d6e0;
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}

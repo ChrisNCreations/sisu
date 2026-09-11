@@ -5,20 +5,16 @@
   "author": "Degensoft Ltd.",
   "license": "SEE LICENSE IN LICENSE",
   "scripts": {
-    "precompile": "mkdir -p node_modules/forge-std && rsync -a node_modules/forge-std/src/ node_modules/forge-std/",
-    "build": "npm run precompile && hardhat compile",
-    "test": "npm run precompile && hardhat test",
+    "build": "hardhat compile",
+    "test": "hardhat test",
     "deploy": "hardhat deploy --network",
     "deploy:localhost": "hardhat deploy --network localhost",
     "clean": "rimraf artifacts cache coverage contracts/hardhat-dependency-compiler deployments typechain-types"
   },
   "dependencies": {
-    "@1inch/aqua": "https://github.com/1inch/aqua#6f05aa1ac2dcf701b0e086ad5e7606515f1fa454",
-    "@1inch/aqua-sdk": "^1.0.0",
-    "@1inch/sdk-core": "^1.0.0",
+    "@1inch/aqua": "git+https://github.com/1inch/aqua.git#6f05aa1ac2dcf701b0e086ad5e7606515f1fa454",
     "@1inch/solidity-utils": "6.9.7",
-    "@1inch/swap-vm": "https://github.com/1inch/swap-vm#b44977a1c7744c9caa6b7974d9b638ed4983cfd3",
-    "@1inch/swap-vm-sdk": "^1.0.0",
+    "@1inch/swap-vm": "git+https://github.com/1inch/swap-vm.git#b44977a1c7744c9caa6b7974d9b638ed4983cfd3",
     "@openzeppelin/contracts": "5.4.0"
   },
   "devDependencies": {

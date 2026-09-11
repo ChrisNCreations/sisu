@@ -12,6 +12,9 @@ dotenv.config();
 
 const config: HardhatUserConfig = {
   networks: {
+    hardhat: {
+      allowUnlimitedContractSize: true,
+    },
     localhost: {
       url: "http://127.0.0.1:8545",
     },
@@ -54,6 +57,7 @@ const config: HardhatUserConfig = {
       "@1inch/swap-vm/src/routers/AquaSwapVMRouter.sol",
       "@1inch/swap-vm/src/routers/SwapVMRouter.sol",
       "@1inch/swap-vm/test/mocks/WETHMock.sol",
+      "@1inch/swap-vm/test/utils/ProgramBuilder.sol",
       "@1inch/solidity-utils/contracts/mocks/TokenMock.sol"
     ]
   },
