@@ -30,7 +30,7 @@ import {
 } from "@/lib/chain";
 
 const NOT_SEEDED = new Error(
-  "No seeded Sisu deployment. Run: npx hardhat run scripts/setup-ui.ts --network localhost (sisu/).",
+  "No seeded Sisu deployment. Run: npx hardhat run scripts/setup-ui.ts --network localhost.",
 );
 
 function dep(): Deployment {

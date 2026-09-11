@@ -2,7 +2,7 @@
 
 Canonical UI context. Read this before any `web/` work. Protocol math lives in the contracts and the architecture grill; this file is the product surface only.
 
-**Location.** The implemented app is workspace `web/` (`SIsu/web`), not `sisu/app`. `sisu/app` is a leftover Next scaffold — delete-zone. Remaining UI work: `docs/specs/frontend.md` at the workspace root.
+**Location.** The implemented app is `sisu/web/`, inside the git root (moved 2026-09-11; supersedes ADR-0003). Remaining UI work: `../docs/specs/frontend.md` at the workspace root.
 
 ## Product the UI must make obvious
 
@@ -28,13 +28,13 @@ Switch in MetaMask. Demo funds both. Do not require one EOA to be both.
 
 ## Stack
 
-- Next.js App Router at workspace `web/`
+- Next.js App Router at `sisu/web/`
 - TypeScript, Tailwind v4 using `sisu/design/theme.css` + `variables.css`
 - wagmi + viem, injected wallet only, chain Hardhat `31337`
 - recharts for **one** Dashboard allocation split
 - React Bits only for decorative/motion that does not fight tokens
 - Core UI hand-built from tokens. No Linear sidebar, command palette, or issue-tracker chrome
-- Quote / ship / swap / dock / decode live in `web/lib`, not a published SDK
+- Quote / ship / swap / dock / decode live in `sisu/web/lib`, not a published SDK
 - Desktop-first. Dark only.
 
 ## Visual
@@ -100,7 +100,7 @@ Local/session list of txs this app sent: hash, action (ship/swap/dock), success/
 
 ## Seed
 
-`scripts/setup-ui.ts` leaves the local node UI-ready: deploy, fund accounts 0 and 1, ship one 50/50 strategy, write `web/lib/deployment.json`. Swap works before anyone uses Create. The script is specified; it does not exist yet (`docs/specs/build.md`).
+`sisu/scripts/setup-ui.ts` leaves the local node UI-ready: deploy, fund accounts 0 and 1, ship one 50/50 strategy, write `sisu/web/lib/deployment.json`.
 
 ## Out
 

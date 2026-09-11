@@ -8,7 +8,7 @@ async function main() {
   const traderAddr = await trader.getAddress();
   const d = JSON.parse(
     fs.readFileSync(
-      path.join(__dirname, "../../web/lib/deployment.json"),
+      path.join(__dirname, "../web/lib/deployment.json"),
       "utf8",
     ),
   );
