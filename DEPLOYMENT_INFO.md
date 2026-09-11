@@ -35,6 +35,12 @@ deployer. Strategy order hash:
 | USDC (mock) | `0xBB161a52382494c4aF1C9b3b07d4Ff4Bfc0A3A5B` | https://sepolia.etherscan.io/address/0xBB161a52382494c4aF1C9b3b07d4Ff4Bfc0A3A5B |
 | ETH/USD mark (mock) | `0x662CA6e79F4d0d95fFA1F42b4fc79a624AED8D27` | https://sepolia.etherscan.io/address/0x662CA6e79F4d0d95fFA1F42b4fc79a624AED8D27 |
 
+All three product contracts show green source ticks on Sepolia Etherscan
+(Aqua matched 1inch's own verified bytecode; Strategy + Router verified
+2026-09-11 via `scripts/verify-etherscan.ts`, standard-json, solc 0.8.30,
+optimizer runs 1, Cancun). Router creation tx:
+https://sepolia.etherscan.io/tx/0x151d66e13e2df09c3bfbbdf319f2545aeab966312bd13be598f22fcbf04fa56f
+
 `scripts/verify-trader.ts --network sepolia` against this deployment:
 
 - safe quote 0.05 ETH → 142.448921274467781111 USDC, swap settles

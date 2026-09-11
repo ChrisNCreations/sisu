@@ -66,11 +66,20 @@ const config: HardhatUserConfig = {
   },
   etherscan: {
     apiKey: {
-      // Add your Etherscan API keys here
-      mainnet: process.env.ETHERSCAN_API_KEY || "",
+      // Etherscan API V2 uses one key for all chains.
       sepolia: process.env.ETHERSCAN_API_KEY || "",
-      // Add other networks as needed
-    }
+      mainnet: process.env.ETHERSCAN_API_KEY || "",
+    },
+    customChains: [
+      {
+        network: "sepolia",
+        chainId: 11155111,
+        urls: {
+          apiURL: "https://api.etherscan.io/v2/api?chainid=11155111",
+          browserURL: "https://sepolia.etherscan.io",
+        },
+      },
+    ],
   }
 };
 
