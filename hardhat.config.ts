@@ -43,10 +43,6 @@ const config: HardhatUserConfig = {
             runs: 1,
             details: {
               yul: true,
-              yulDetails: {
-                stackAllocation: true,
-                optimizerSteps: "dhfoDgvulfnTUtnIf"
-              }
             }
           },
           evmVersion: "cancun",
