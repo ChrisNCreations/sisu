@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { formatBps, formatHash, formatRisk, formatToken } from "@/lib/format";
+import { explorerTxUrl } from "@/lib/chain";
 import type { HistoryEntry } from "@/lib/sdk";
 
 function timeLabel(timestamp: number): string {
@@ -78,7 +79,21 @@ export default function HistoryPage() {
                   className="border-b border-graphite last:border-b-0"
                 >
                   <td className="px-4 py-2.5 font-mono text-[12px] text-mist">
-                    {formatHash(row.hash)}
+                    {(() => {
+                      const url = explorerTxUrl(row.hash);
+                      return url ? (
+                        <a
+                          href={url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="underline decoration-white/20 underline-offset-2"
+                        >
+                          {formatHash(row.hash)}
+                        </a>
+                      ) : (
+                        formatHash(row.hash)
+                      );
+                    })()}
                   </td>
                   <td className="px-4 py-2.5 text-fog">
                     {timeLabel(row.timestamp)}

@@ -17,7 +17,7 @@ import {
   type Quote,
   type SisuStrategy,
 } from "@/lib/sdk";
-import { getDeployment, publicClient } from "@/lib/chain";
+import { explorerTxUrl, getDeployment, publicClient } from "@/lib/chain";
 import {
   formatBps,
   formatPctPrecise,
@@ -33,6 +33,7 @@ export function SwapTicket({ strategy }: { strategy: SisuStrategy }) {
   const [quote, setQuote] = useState<Quote | null>(null);
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
+  const [lastTx, setLastTx] = useState<string | null>(null);
 
   const inToken = tokenIn === "A" ? strategy.tokenA : strategy.tokenB;
   const outToken = tokenIn === "A" ? strategy.tokenB : strategy.tokenA;
@@ -95,6 +96,7 @@ export function SwapTicket({ strategy }: { strategy: SisuStrategy }) {
       const receipt = await publicClient.waitForTransactionReceipt({ hash });
       if (receipt.status === "success") {
         setStatus(`Swap settled: ${hash}`);
+        setLastTx(hash);
         appendHistory({
           hash,
           timestamp: Date.now(),
@@ -265,6 +267,21 @@ export function SwapTicket({ strategy }: { strategy: SisuStrategy }) {
         {status ??
           "Projected risk is informational. The onchain instruction remains authoritative."}
       </p>
+      {(() => {
+        if (!lastTx) return null;
+        const url = explorerTxUrl(lastTx);
+        if (!url) return null;
+        return (
+          <a
+            href={url}
+            target="_blank"
+            rel="noreferrer"
+            className="font-mono text-[12px] tabular text-mist underline decoration-white/20 underline-offset-2"
+          >
+            View on explorer
+          </a>
+        );
+      })()}
     </Card>
   );
 }

@@ -334,4 +334,21 @@ export function takerTraitsFor(opts: {
   return buildTakerTraits({ taker: opts.taker, isAToB });
 }
 
+/** Explorer base URL for the seeded chain, or null (local node). */
+export function explorerBase(): string | null {
+  const id = deploymentChainId();
+  if (id === 11155111) return "https://sepolia.etherscan.io";
+  return null;
+}
+
+export function explorerTxUrl(hash: string): string | null {
+  const base = explorerBase();
+  return base ? `${base}/tx/${hash}` : null;
+}
+
+export function explorerAddressUrl(address: string): string | null {
+  const base = explorerBase();
+  return base ? `${base}/address/${address}` : null;
+}
+
 export { hexBytes };
