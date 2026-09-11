@@ -39,7 +39,7 @@ lerna-debug.log*
 deployments/localhost/
 deployments/hardhat/
 
-#design reference
-sisu/design/ab624031-a610-4f80-bc9b-33556dece7d3.mp4
-sisu/design/DESIGN.md
+#design reference binaries (keep sources, drop large media)
+design/*.mp4
+design/*.mov
 
