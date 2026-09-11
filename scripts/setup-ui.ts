@@ -55,22 +55,26 @@ async function main() {
     (await tokenA.getAddress()).toLowerCase();
 
   // Fund maker + trader (maker ships, trader swaps).
+  // Every broadcast is mined before the next: public RPCs serve stale
+  // nonces under rapid sends ("replacement transaction underpriced").
   for (const acct of [maker, trader]) {
     const addr = await acct.getAddress();
-    await eth.mint(addr, ethers.parseEther("100"));
-    await usdc.mint(addr, ethers.parseEther("400000"));
+    await (await eth.mint(addr, ethers.parseEther("100"))).wait();
+    await (await usdc.mint(addr, ethers.parseEther("400000"))).wait();
   }
   // Native gas for distinct trader accounts (BuildBear faucet funds owner only).
   if (traderAddr.toLowerCase() !== (await owner.getAddress()).toLowerCase()) {
-    await owner.sendTransaction({
-      to: traderAddr,
-      value: ethers.parseEther("1"),
-    });
+    await (
+      await owner.sendTransaction({
+        to: traderAddr,
+        value: ethers.parseEther("1"),
+      })
+    ).wait();
   }
-  await eth.connect(maker).approve(await aqua.getAddress(), ethers.MaxUint256);
-  await usdc.connect(maker).approve(await aqua.getAddress(), ethers.MaxUint256);
-  await eth.connect(trader).approve(await swapVM.getAddress(), ethers.MaxUint256);
-  await usdc.connect(trader).approve(await swapVM.getAddress(), ethers.MaxUint256);
+  await (await eth.connect(maker).approve(await aqua.getAddress(), ethers.MaxUint256)).wait();
+  await (await usdc.connect(maker).approve(await aqua.getAddress(), ethers.MaxUint256)).wait();
+  await (await eth.connect(trader).approve(await swapVM.getAddress(), ethers.MaxUint256)).wait();
+  await (await usdc.connect(trader).approve(await swapVM.getAddress(), ethers.MaxUint256)).wait();
 
   // Ship one 50/50 book: 1 ETH + 3000 USDC at $3000 mark.
   const liquidityEth = ethers.parseEther("1");

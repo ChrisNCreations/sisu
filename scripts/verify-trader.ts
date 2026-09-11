@@ -4,7 +4,8 @@ import * as path from "path";
 
 // Trader verification: safe swap settles, unsafe reverts with no settlement.
 async function main() {
-  const [, , trader] = await ethers.getSigners();
+  const signers = await ethers.getSigners();
+  const trader = signers[2] ?? signers[0];
   const traderAddr = await trader.getAddress();
   const d = JSON.parse(
     fs.readFileSync(
