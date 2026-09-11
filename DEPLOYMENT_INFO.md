@@ -6,8 +6,8 @@ Where Sisu is deployed, with what seed, and where to click.
 
 | Network   | RPC | Chain | Status |
 |-----------|-----|-------|--------|
-| Hardhat local | `http://127.0.0.1:8545` | 31337 | Live seed path (judge path) |
-| BuildBear | `BUILDBEAR_RPC_URL` from `.env` | varies (recorded in `deployment.json`) | Ready to seed: `npx hardhat run scripts/setup-ui.ts --network buildbear`, then `npm run build` in `web/` so the UI bundles the new `deployment.json` + RPC. Paste explorer tx links below. |
+| Hardhat local | `http://127.0.0.1:8545` | 31337 | Live seed path |
+| Sepolia | `SEPOLIA_RPC_URL` from `.env` | 11155111 | **Seeded 2026-09-11 — judged deployment** |
 
 ## Local seed (`scripts/setup-ui.ts --network localhost`)
 
@@ -19,6 +19,29 @@ Where Sisu is deployed, with what seed, and where to click.
 - Writes `web/lib/deployment.json` (gitignored; schema in
   `web/lib/deployment.example.json`).
 
+## Sepolia seed (2026-09-11, deployer `0x446F4fab225EEa73e53484D38D2D6089D82f00D2`)
+
+Same stack and policy as local. Single-key network, so maker = trader =
+deployer. Strategy order hash:
+
+`0x52c63c3e302c68bd1050795353a111c7b650800330aa56511aeae7eb41f8e12c`
+
+| Contract | Address | Explorer |
+|----------|---------|----------|
+| Aqua | `0x3C79789Fc773962803d61115ee13DCa0b011D22f` | https://sepolia.etherscan.io/address/0x3C79789Fc773962803d61115ee13DCa0b011D22f |
+| SisuStrategy | `0xCFDE9b3868A08eEAbBbC803a3f126BEa471E8bC9` | https://sepolia.etherscan.io/address/0xCFDE9b3868A08eEAbBbC803a3f126BEa471E8bC9 |
+| SisuSwapVMRouter | `0xD2e8bA0284a1f19a33168e805F905084444c13d2` | https://sepolia.etherscan.io/address/0xD2e8bA0284a1f19a33168e805F905084444c13d2 |
+| ETH (mock) | `0x830e9bccFd31cc2E19CA7ae5cfD061D268399f3c` | https://sepolia.etherscan.io/address/0x830e9bccFd31cc2E19CA7ae5cfD061D268399f3c |
+| USDC (mock) | `0xBB161a52382494c4aF1C9b3b07d4Ff4Bfc0A3A5B` | https://sepolia.etherscan.io/address/0xBB161a52382494c4aF1C9b3b07d4Ff4Bfc0A3A5B |
+| ETH/USD mark (mock) | `0x662CA6e79F4d0d95fFA1F42b4fc79a624AED8D27` | https://sepolia.etherscan.io/address/0x662CA6e79F4d0d95fFA1F42b4fc79a624AED8D27 |
+
+`scripts/verify-trader.ts --network sepolia` against this deployment:
+
+- safe quote 0.05 ETH → 142.448921274467781111 USDC, swap settles
+  (single-key demo: maker and trader are the same EOA, so the net token
+  delta is ~0; settlement is proven by the receipt + quote amounts)
+- unsafe 5 ETH swap reverts, no settlement, maker balance unchanged
+
 ## Reference transactions (local)
 
 Seed output prints the strategy hash. `scripts/verify-trader.ts` reproduces
@@ -26,8 +49,3 @@ the Example Case from the README against the seeded node:
 
 - safe 0.05 ETH → ~142.44 USDC, settles
 - unsafe 5 ETH → `SisuRiskLimitExceeded(946525974, 600000000)`, no settlement
-
-## Explorer links (BuildBear)
-
-TBD after the public-network deploy: seed tx, ship tx, safe swap tx,
-unsafe (reverted) tx.

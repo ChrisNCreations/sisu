@@ -81,11 +81,22 @@ unsafe swap reverted on send (no settlement)
 maker balance unchanged: true
 ```
 
+## Sepolia deployment (judged)
+
+Seeded 2026-09-11 on Sepolia (chain 11155111), same policy. Strategy:
+
+`0x52c63c3e302c68bd1050795353a111c7b650800330aa56511aeae7eb41f8e12c`
+
+- Router: https://sepolia.etherscan.io/address/0xD2e8bA0284a1f19a33168e805F905084444c13d2
+- Aqua: https://sepolia.etherscan.io/address/0x3C79789Fc773962803d61115ee13DCa0b011D22f
+- Full address table: `DEPLOYMENT_INFO.md`. To run the UI against it,
+  rebuild `web/` with this deployment in `web/lib/deployment.json`.
+
 ## Qualification checklist (1inch "Build an Aqua App")
 
 - Official Aqua/SwapVM contracts used (pinned, extended — not forked).
-- Onchain token transfers shown in the demo above (local node; public-network
-  deployment tracked in `DEPLOYMENT_INFO.md`).
+- Onchain token transfers shown in the demo above: local script plus the
+  Sepolia deployment with explorer links (`DEPLOYMENT_INFO.md`).
 - Custom SwapVM instructions: `SisuFee` + `SisuLimit` with tests
   (`test/SisuRiskMath.test.ts`, `test/SisuAqua.e2e.test.ts`: safe / unsafe /
   repair / stale-oracle).
