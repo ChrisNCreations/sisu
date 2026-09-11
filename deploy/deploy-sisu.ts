@@ -81,6 +81,31 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   console.log(`USDC: ${usdcDeploy.address}`);
   console.log(`Aggregator: ${aggregatorDeploy.address}`);
   console.log('===============================\n');
+
+  // Verify on Etherscan when not local (same pattern as deploy-aqua.ts).
+  const isLocalNetwork = hre.network.name === 'localhost' || hre.network.name === 'hardhat';
+  if (!isLocalNetwork) {
+    console.log('Waiting for block confirmations...');
+    await new Promise((resolve) => setTimeout(resolve, 30000));
+
+    console.log('Verifying Sisu contracts...');
+    const toVerify: { address: string; args: unknown[]; label: string }[] = [
+      { address: aquaDeploy.address, args: [], label: 'Aqua' },
+      { address: strategyDeploy.address, args: [aquaDeploy.address], label: 'SisuStrategy' },
+      { address: routerDeploy.address, args: routerArgs, label: 'SisuSwapVMRouter' },
+    ];
+    for (const c of toVerify) {
+      try {
+        await hre.run('verify:verify', {
+          address: c.address,
+          constructorArguments: c.args,
+        });
+        console.log(`${c.label} verified`);
+      } catch (error) {
+        console.error(`Failed to verify ${c.label}:`, error);
+      }
+    }
+  }
 };
 
 export default func;
