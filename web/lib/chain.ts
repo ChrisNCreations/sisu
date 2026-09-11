@@ -202,7 +202,30 @@ export const erc20Abi = [
     inputs: [{ name: "account", type: "address" }],
     outputs: [{ name: "", type: "uint256" }],
   },
+  {
+    name: "allowance",
+    type: "function",
+    stateMutability: "view",
+    inputs: [
+      { name: "owner", type: "address" },
+      { name: "spender", type: "address" },
+    ],
+    outputs: [{ name: "", type: "uint256" }],
+  },
 ] as const;
+
+export async function readAllowance(
+  token: Hex,
+  owner: Hex,
+  spender: Hex,
+): Promise<bigint> {
+  return (await publicClient.readContract({
+    address: token,
+    abi: erc20Abi,
+    functionName: "allowance",
+    args: [owner, spender],
+  })) as bigint;
+}
 
 // SisuRiskLimitExceeded(uint256 postRiskBps, uint256 maxRiskBps)
 export const riskLimitExceededSelector = "0xbd870a2b";

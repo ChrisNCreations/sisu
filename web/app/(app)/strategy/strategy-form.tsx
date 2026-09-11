@@ -2,12 +2,23 @@
 
 import { useState } from "react";
 import { useWalletClient } from "wagmi";
+import { parseEther } from "viem";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { ApproveButton } from "@/components/approve-button";
 import { useWallet } from "@/components/providers";
-import { sdk, type SisuStrategy } from "@/lib/sdk";
-import { publicClient } from "@/lib/chain";
+import { sdk, appendHistory, type SisuStrategy } from "@/lib/sdk";
+import { getDeployment, publicClient } from "@/lib/chain";
+
+function toWei(value: string): bigint | null {
+  try {
+    const wei = parseEther(value || "0");
+    return wei;
+  } catch {
+    return null;
+  }
+}
 
 interface FieldDef {
   id: string;
@@ -102,6 +113,20 @@ export function StrategyForm({ strategy }: { strategy: SisuStrategy }) {
       });
       await publicClient.waitForTransactionReceipt({ hash });
       setStatus(`Strategy shipped: ${hash}`);
+      appendHistory({
+        hash,
+        timestamp: Date.now(),
+        action: "ship",
+        success: true,
+        tokenIn: strategy.tokenA.symbol,
+        tokenOut: strategy.tokenB.symbol,
+        amountIn: Number(get("depositEth")),
+        amountOut: Number(get("depositUsdc")),
+        feeBps: 0,
+        riskBeforeBps: 0,
+        riskAfterBps: 0,
+        direction: "AtoB",
+      });
     } catch (err) {
       setStatus(
         err instanceof Error ? `Ship failed: ${err.message}` : "Ship failed.",
@@ -150,6 +175,35 @@ export function StrategyForm({ strategy }: { strategy: SisuStrategy }) {
             {status ?? "SDK converts these values into the onchain program."}
           </p>
         </div>
+        {(() => {
+          const deployment = getDeployment();
+          if (!deployment) return null;
+          const val = (id: string) =>
+            fields.find((field) => field.id === id)?.value ?? "";
+          const ethWei = toWei(val("depositEth"));
+          const usdcWei = toWei(val("depositUsdc"));
+          if (ethWei === null && usdcWei === null) return null;
+          return (
+            <div className="flex flex-col gap-2">
+              {ethWei !== null && ethWei > 0n && (
+                <ApproveButton
+                  token={strategy.tokenA.address}
+                  spender={deployment.aqua}
+                  needed={ethWei}
+                  symbol={strategy.tokenA.symbol}
+                />
+              )}
+              {usdcWei !== null && usdcWei > 0n && (
+                <ApproveButton
+                  token={strategy.tokenB.address}
+                  spender={deployment.aqua}
+                  needed={usdcWei}
+                  symbol={strategy.tokenB.symbol}
+                />
+              )}
+            </div>
+          );
+        })()}
       </Card>
     </form>
   );

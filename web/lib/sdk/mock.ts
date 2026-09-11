@@ -49,6 +49,8 @@ const history: HistoryEntry[] = [
   {
     hash: "0x9f2c18ab44d1e7c0b3a5f8e216d9c4b0a7e1f335",
     timestamp: Date.now() - 1000 * 60 * 18,
+    action: "swap",
+    success: true,
     tokenIn: "ETH",
     tokenOut: "USDC",
     amountIn: 2.4,
@@ -61,6 +63,8 @@ const history: HistoryEntry[] = [
   {
     hash: "0x1a7e44c0d9b2f6a83e5c1d0b9f4a2e7c6d8b3a11",
     timestamp: Date.now() - 1000 * 60 * 60 * 5,
+    action: "swap",
+    success: true,
     tokenIn: "USDC",
     tokenOut: "ETH",
     amountIn: 3_200,
@@ -73,6 +77,8 @@ const history: HistoryEntry[] = [
   {
     hash: "0x4d88e1b0c2a9f7d35e6b1c8a0f4d2e9b7c5a1630",
     timestamp: Date.now() - 1000 * 60 * 60 * 26,
+    action: "swap",
+    success: true,
     tokenIn: "ETH",
     tokenOut: "USDC",
     amountIn: 1.1,

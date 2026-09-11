@@ -3,10 +3,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { ArrowDownUp } from "lucide-react";
 import { useWalletClient } from "wagmi";
+import { parseEther } from "viem";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { RiskMeter } from "@/components/risk-meter";
+import { ApproveButton } from "@/components/approve-button";
 import { useWallet } from "@/components/providers";
 import {
   appendHistory,
@@ -15,7 +17,7 @@ import {
   type Quote,
   type SisuStrategy,
 } from "@/lib/sdk";
-import { publicClient } from "@/lib/chain";
+import { getDeployment, publicClient } from "@/lib/chain";
 import {
   formatBps,
   formatPctPrecise,
@@ -96,6 +98,8 @@ export function SwapTicket({ strategy }: { strategy: SisuStrategy }) {
         appendHistory({
           hash,
           timestamp: Date.now(),
+          action: "swap",
+          success: true,
           tokenIn: inToken.symbol,
           tokenOut: outToken.symbol,
           amountIn,
@@ -109,6 +113,20 @@ export function SwapTicket({ strategy }: { strategy: SisuStrategy }) {
         setStatus(
           `Trade exceeds strategy risk limit — current ${formatRiskPrecise(quote.currentRiskBps)}, projected ${formatRiskPrecise(quote.postTradeRiskBps)}, max ${formatRiskPrecise(quote.maxRiskBps)}. No tokens moved.`,
         );
+        appendHistory({
+          hash,
+          timestamp: Date.now(),
+          action: "swap",
+          success: false,
+          tokenIn: inToken.symbol,
+          tokenOut: outToken.symbol,
+          amountIn,
+          amountOut: 0,
+          feeBps: quote.feeBps,
+          riskBeforeBps: quote.currentRiskBps,
+          riskAfterBps: quote.postTradeRiskBps,
+          direction: tokenIn === "A" ? "AtoB" : "BtoA",
+        });
       }
     } catch (err) {
       const decoded = decodeSwapRevert(err);
@@ -225,6 +243,24 @@ export function SwapTicket({ strategy }: { strategy: SisuStrategy }) {
               ? "Swap anyway"
               : "Swap"}
       </Button>
+      {(() => {
+        const deployment = getDeployment();
+        if (!deployment || amountIn <= 0) return null;
+        let amountWei = 0n;
+        try {
+          amountWei = parseEther(amount);
+        } catch {
+          return null;
+        }
+        return (
+          <ApproveButton
+            token={inToken.address}
+            spender={deployment.swapVM}
+            needed={amountWei}
+            symbol={inToken.symbol}
+          />
+        );
+      })()}
       <p id="swap-status" className="text-[12px] text-fog" role="status">
         {status ??
           "Projected risk is informational. The onchain instruction remains authoritative."}

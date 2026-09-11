@@ -280,8 +280,33 @@ async function strategyView(d: Deployment): Promise<SisuStrategy> {
     maxFeeBps: Number(BigInt(d.maxFee)) / 1e5,
     currentFeeBps: Number(fee) / 1e5,
     rebalanceStrength: Number(BigInt(d.rebalanceStrength)) / 1e9,
-    maxTradeUsd: 0,
+    maxTradeUsd: Number(formatEther(maxTradeHintUsd(valA, valB, maxRisk))),
   };
+}
+
+/** Derived hint (not policy): largest exact-in USD value (1e18) that keeps
+ *  RiskPost <= max in pure value math, ignoring fee and curve. Minimum of
+ *  both directions. The onchain Limit remains authoritative. */
+function maxTradeHintUsd(valA: bigint, valB: bigint, maxRisk: bigint): bigint {
+  const dir = (inA: boolean): bigint => {
+    const inSide = inA ? valA : valB;
+    const outSide = inA ? valB : valA;
+    let lo = 0n;
+    let hi = valA + valB + 1n;
+    for (let i = 0; i < 80; i++) {
+      const mid = (lo + hi) / 2n;
+      const post =
+        mid >= outSide
+          ? ONE
+          : risk1e9(inSide + mid, outSide - mid);
+      if (post <= maxRisk) lo = mid;
+      else hi = mid;
+    }
+    return lo;
+  };
+  const a = dir(true);
+  const b = dir(false);
+  return a < b ? a : b;
 }
 
 export const realSdk: SisuSDK = {
@@ -437,6 +462,7 @@ export function appendHistory(entry: HistoryEntry) {
       "sisu:history:v1",
       JSON.stringify(list.slice(0, 50)),
     );
+    window.dispatchEvent(new Event("sisu:history"));
   } catch {
     // Session log is best-effort.
   }

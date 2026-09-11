@@ -83,6 +83,8 @@ export interface TransactionRequest {
 export interface HistoryEntry {
   hash: Hex;
   timestamp: number;
+  action: "swap" | "ship" | "dock";
+  success: boolean;
   tokenIn: string;
   tokenOut: string;
   amountIn: number;
