@@ -52,15 +52,16 @@ export interface RiskSimulation {
 }
 
 export interface ShipParams {
+  maker: Hex;
   tokenA: Hex;
   tokenB: Hex;
-  capital: number;
-  targetWeight: number;
-  maxRisk: number;
-  baseFee: number;
-  maxFee: number;
+  depositEth: number;
+  depositUsdc: number;
+  maxRiskPct: number;
+  baseFeeBps: number;
+  maxFeeBps: number;
   rebalanceStrength: number;
-  maxTrade: number;
+  salt: bigint;
 }
 
 export interface DockParams {
@@ -78,6 +79,7 @@ export interface TransactionRequest {
   to: Hex;
   data: Hex;
   value: bigint;
+  strategyHash?: Hex;
 }
 
 export interface HistoryEntry {

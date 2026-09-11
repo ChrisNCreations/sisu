@@ -354,43 +354,42 @@ export const realSdk: SisuSDK = {
       tokenA.toLowerCase() < tokenB.toLowerCase()
         ? [tokenA, tokenB]
         : [tokenB, tokenA];
+    // Form units → onchain units: pct → 1e9, bps → 1e5, multiplier → 1e9.
+    const maxRisk = Math.round((params.maxRiskPct / 100) * RATIO_ONE);
+    const baseFee = Math.round(params.baseFeeBps * 1e5);
+    const maxFee = Math.round(params.maxFeeBps * 1e5);
+    const strength = Math.round(params.rebalanceStrength * 1e9);
+    if (maxRisk <= 0) throw new Error("Max risk must be above 0%.");
+    if (maxFee < baseFee) throw new Error("Max fee must cover the base fee.");
     const built = (await publicClient.readContract({
       address: d.sisuStrategy,
       abi: strategyAbi,
       functionName: "buildProgram",
       args: [
-        d.maker,
+        params.maker,
         sortedA,
         sortedB,
         d.aggregator,
         d.eth,
         d.maxStaleness,
-        Number(BigInt(d.maxRisk)),
-        Number(BigInt(d.baseFee)),
-        Number(BigInt(d.maxFee)),
-        Number(BigInt(d.rebalanceStrength)),
-        1n,
+        maxRisk,
+        baseFee,
+        maxFee,
+        strength,
+        params.salt,
         0,
       ],
     })) as unknown as readonly [Hex, bigint, Hex];
     const order: Order = { maker: built[0], traits: built[1], data: built[2] };
-    const extra = params as ShipParams & {
-      depositEth?: number;
-      depositUsdc?: number;
-    };
     const ethAddr = d.eth.toLowerCase();
     const amtA = parseEther(
       String(
-        sortedA.toLowerCase() === ethAddr
-          ? (extra.depositEth ?? 1)
-          : (extra.depositUsdc ?? 3000),
+        sortedA.toLowerCase() === ethAddr ? params.depositEth : params.depositUsdc,
       ),
     );
     const amtB = parseEther(
       String(
-        sortedB.toLowerCase() === ethAddr
-          ? (extra.depositEth ?? 1)
-          : (extra.depositUsdc ?? 3000),
+        sortedB.toLowerCase() === ethAddr ? params.depositEth : params.depositUsdc,
       ),
     );
     const { encodeAbiParameters } = await import("viem");
@@ -412,7 +411,13 @@ export const realSdk: SisuSDK = {
       functionName: "ship",
       args: [d.swapVM, strategy, [sortedA, sortedB], [amtA, amtB]],
     });
-    return { to: d.aqua, data: data as Hex, value: BigInt(0) };
+    const strategyHash = (await publicClient.readContract({
+      address: d.swapVM,
+      abi: swapVMAbi,
+      functionName: "hash",
+      args: [order],
+    })) as Hex;
+    return { to: d.aqua, data: data as Hex, value: BigInt(0), strategyHash };
   },
 
   async dockStrategy(params: DockParams) {
