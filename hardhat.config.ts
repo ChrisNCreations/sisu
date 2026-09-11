@@ -22,6 +22,10 @@ const config: HardhatUserConfig = {
       url: process.env.SEPOLIA_RPC_URL || "",
       accounts: process.env.PRIVATE_KEY ? ["0x" + process.env.PRIVATE_KEY] : [],
     },
+    buildbear: {
+      url: process.env.BUILDBEAR_RPC_URL || "",
+      accounts: process.env.PRIVATE_KEY ? ["0x" + process.env.PRIVATE_KEY] : [],
+    },
     // Add your deployment network here and the corresponding URL in the .env file
   },
   namedAccounts: {

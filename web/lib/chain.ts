@@ -1,11 +1,12 @@
-import { createPublicClient, http, type Hex } from "viem";
-import { hardhatChain } from "@/components/providers";
+import { createPublicClient, defineChain, http, type Hex } from "viem";
 import example from "./deployment.example.json";
 
 export const RATIO_ONE = 1_000_000_000; // onchain 1e9 = 100%
+export const LOCAL_RPC = "http://127.0.0.1:8545";
 
 export interface Deployment {
   chainId: number;
+  rpcUrl: string;
   aqua: Hex;
   sisuStrategy: Hex;
   swapVM: Hex;
@@ -55,9 +56,27 @@ export function getExampleDeployment(): Deployment {
   return example as Deployment;
 }
 
+/** RPC + chain id follow the seed output; localhost when unseeded. */
+export function deploymentRpc(): string {
+  return getDeployment()?.rpcUrl || LOCAL_RPC;
+}
+
+export function deploymentChainId(): number {
+  return getDeployment()?.chainId ?? 31337;
+}
+
+export const hardhatChain = defineChain({
+  id: deploymentChainId(),
+  name: "Sisu",
+  nativeCurrency: { decimals: 18, name: "Ether", symbol: "ETH" },
+  rpcUrls: {
+    default: { http: [deploymentRpc()] },
+  },
+});
+
 export const publicClient = createPublicClient({
   chain: hardhatChain,
-  transport: http("http://127.0.0.1:8545"),
+  transport: http(deploymentRpc()),
 });
 
 const orderTuple = {

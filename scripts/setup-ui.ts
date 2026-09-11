@@ -1,4 +1,4 @@
-import { ethers } from "hardhat";
+import hre, { ethers } from "hardhat";
 import { deployContract } from "@1inch/solidity-utils";
 import * as fs from "fs";
 import * as path from "path";
@@ -12,11 +12,17 @@ import {
   ETH_USD,
 } from "../test/utils/sisuFixtures";
 
-// Seeds a local Hardhat node so Swap works before anyone uses Create.
-// Run against a funded node: npx hardhat node (terminal 1),
-// then: npx hardhat run scripts/setup-ui.ts --network localhost
+// Seeds a node so Swap works before anyone uses Create.
+// Local: npx hardhat node (terminal 1), then:
+//   npx hardhat run scripts/setup-ui.ts --network localhost
+// Public demo (BuildBear): set BUILDBEAR_RPC_URL + PRIVATE_KEY in .env, then:
+//   npx hardhat run scripts/setup-ui.ts --network buildbear
 async function main() {
-  const [owner, maker, trader] = await ethers.getSigners();
+  const signers = await ethers.getSigners();
+  const owner = signers[0];
+  // Single-key networks (BuildBear): maker and trader fall back to the owner.
+  const maker = signers[1] ?? owner;
+  const trader = signers[2] ?? owner;
   const makerAddr = await maker.getAddress();
   const traderAddr = await trader.getAddress();
 
@@ -53,6 +59,13 @@ async function main() {
     const addr = await acct.getAddress();
     await eth.mint(addr, ethers.parseEther("100"));
     await usdc.mint(addr, ethers.parseEther("400000"));
+  }
+  // Native gas for distinct trader accounts (BuildBear faucet funds owner only).
+  if (traderAddr.toLowerCase() !== (await owner.getAddress()).toLowerCase()) {
+    await owner.sendTransaction({
+      to: traderAddr,
+      value: ethers.parseEther("1"),
+    });
   }
   await eth.connect(maker).approve(await aqua.getAddress(), ethers.MaxUint256);
   await usdc.connect(maker).approve(await aqua.getAddress(), ethers.MaxUint256);
@@ -97,6 +110,7 @@ async function main() {
 
   const deployment = {
     chainId: Number((await ethers.provider.getNetwork()).chainId),
+    rpcUrl: (hre.network.config as { url?: string }).url ?? "",
     aqua: await aqua.getAddress(),
     sisuStrategy: await sisuStrategy.getAddress(),
     swapVM: await swapVM.getAddress(),

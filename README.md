@@ -1,175 +1,104 @@
-# SwapVM Template
+# Sisu — a self-custodial, risk-bounded ETH/USDC book on Aqua + SwapVM
 
-A template project for building and deploying custom swap strategies using 1inch's SwapVM and Aqua protocol.
+Sisu is a custom Aqua app: one 50/50 ETH/USDC strategy with an onchain risk cap.
+Liquidity stays in the maker wallet; Aqua tracks virtual balances; SwapVM runs the
+policy. Unsafe trades revert and no tokens move.
 
-## Overview
+## Mechanism
 
-This project provides a complete implementation of:
-- **AquaAMM**: A concentrated liquidity AMM strategy for SwapVM
-- **MockTaker**: A test contract for simulating swap operations
-- **Deployment scripts**: Automated deployment and verification
-- **Test suite**: Comprehensive tests for swap functionality
+Every swap executes one immutable program — `SISU_FEE → XYC → SISU_LIMIT`:
 
-## Prerequisites
+- **SisuFee (custom opcode 34)** — inventory-aware fee. Trades that worsen the
+  50/50 balance pay more (up to `maxFee`); trades that repair it pay less
+  (floor 0, never a rebate). Pressure × strength × normalized risk.
+- **XYC** — the standard SwapVM constant-product step.
+- **SisuLimit (custom opcode 35)** — the authoritative risk gate. Post-trade
+  inventory imbalance `RiskPost = |A−B| / (A+B)` (USD values, ETH from the
+  aggregator, USDC as $1) above `maxRisk` reverts with
+  `SisuRiskLimitExceeded(post, max)`. Equality is allowed. The UI estimates;
+  SwapVM enforces.
 
-- Node.js v18+ (Note: Node.js v23 may show warnings but works)
-- Yarn
-- Git
+Maker story: ship once, earn more from flow that hurts your inventory and less
+from flow that heals it — while the cap guarantees you can never be drained
+past `maxRisk`. Trader story: one 50/50 book with a visible, enforceable
+risk limit instead of opaque slippage.
 
-## Installation
+Built on the official pinned contracts (`@1inch/swap-vm#b44977a`,
+`@1inch/aqua#6f05aa1`); Sisu extends the opcode set, it does not fork SwapVM.
 
-1. Clone the repository:
+## Quickstart (judge path, ~3 minutes)
+
+Terminal 1 — node:
+
 ```bash
-git clone https://github.com/1inch/swap-vm-template.git
-cd swap-vm-template
+cd sisu
+npx hardhat node
 ```
 
-2. Install dependencies:
+Terminal 2 — seed (deploys, funds accounts 0 + 1, ships one 50/50 book):
+
 ```bash
-yarn
+npx hardhat run scripts/setup-ui.ts --network localhost
 ```
 
-3. Copy environment variables:
+Terminal 3 — UI:
+
 ```bash
-cp .env.example .env
+cd web
+npm install
+npm run dev      # http://localhost:3000
 ```
 
-4. Configure your `.env` file:
-```
-PRIVATE_KEY=your_private_key_here
-SEPOLIA_RPC_URL=your_sepolia_rpc_url
-ETHERSCAN_API_KEY=your_etherscan_api_key
-```
+In MetaMask, import Hardhat account 1 (trader) and connect to
+`http://127.0.0.1:8545` (chain 31337). Approve prompts appear in-UI when needed.
 
-## Compilation
+Headless proof of the same flow:
 
-Compile the smart contracts:
 ```bash
-npx hardhat compile
+npx hardhat test                                   # 31 passing
+npx hardhat run scripts/verify-trader.ts --network localhost
 ```
 
-## Testing
+## Judging script
 
-Run the test suite:
-```bash
-npx hardhat test
+1. Connect account 1, open **Swap**. Dashboard shows the seeded 50/50 book.
+2. **Safe swap** — 0.05 ETH → ~142 USDC settles. Risk rises. Hash lands in
+   **History** as `settled`.
+3. **Unsafe swap** — 5 ETH stays clickable, submits, and reverts:
+   **Trade exceeds strategy risk limit** plus current / projected / max.
+   No tokens move. History logs it as `reverted`.
+4. **Repair swap** — swap back (USDC → ETH). It settles and risk falls;
+   the fee is lower than the worsening direction.
+
+## Example case (local seed: 1 ETH + 3000 USDC @ $3000, maxRisk 60%)
+
+```text
+safe quote:  in=0.05 ETH  out=142.448921274467781111 USDC
+safe swap settled, trader ETH delta=-0.05
+unsafe reverts as required: reverted with custom error
+  'SisuRiskLimitExceeded(946525974, 600000000)'
+unsafe swap reverted on send (no settlement)
+maker balance unchanged: true
 ```
 
-## Deployment
+## Qualification checklist (1inch "Build an Aqua App")
 
-### Local Deployment
+- Official Aqua/SwapVM contracts used (pinned, extended — not forked).
+- Onchain token transfers shown in the demo above (local node; public-network
+  deployment tracked in `DEPLOYMENT_INFO.md`).
+- Custom SwapVM instructions: `SisuFee` + `SisuLimit` with tests
+  (`test/SisuRiskMath.test.ts`, `test/SisuAqua.e2e.test.ts`: safe / unsafe /
+  repair / stale-oracle).
+- Phased git history, one commit per completed step, never a final-day dump.
 
-Deploy to local Hardhat network:
-```bash
-yarn deploy hardhat
+## Layout
+
+```text
+sisu/                       git root
+├── contracts/              SisuFee, SisuLimit, SisuStrategy, SisuSwapVMRouter, libs
+├── test/                   risk-math units + Aqua e2e (safe/unsafe/repair/stale)
+├── deploy/                 deploy-sisu.ts (Sisu path) + deploy-aqua.ts (template)
+├── scripts/                setup-ui.ts (seed), verify-trader.ts (headless proof)
+├── web/                    Next.js UI — Dashboard / Strategy / Swap / History
+└── DEPLOYMENT_INFO.md      networks, seed values, explorer links
 ```
-
-### Testnet Deployment
-
-Deploy to Sepolia testnet:
-```bash
-yarn deploy sepolia
-```
-
-The deployment script will:
-1. Deploy Aqua protocol
-2. Deploy AquaAMM strategy
-3. Resolve WETH (deploys a WETHMock on local networks; uses the canonical address or `WETH_ADDRESS` env on live networks)
-4. Deploy AquaSwapVMRouter
-5. Deploy MockTaker (optional, for testing)
-6. Verify all contracts on Etherscan (for non-local networks)
-
-## Usage Examples
-
-### Creating an AMM Order
-
-```typescript
-const order = await aquaAMM.buildProgram(
-  makerAddress,        // Liquidity provider
-  tokenAAddress,       // First token of the pair (sorted automatically)
-  tokenBAddress,       // Second token of the pair (sorted automatically)
-  feeBpsIn,            // Trading fee on input amount in bps (1e9 = 100%)
-  sqrtPriceMin,        // sqrt(P_min) in 1e18 fixed-point (0 = full range)
-  sqrtPriceMax,        // sqrt(P_max) in 1e18 fixed-point (0 = full range)
-  decayPeriod,         // Price decay period in seconds
-  protocolFeeBpsIn,    // Protocol fee on input amount in bps (1e9 = 100%)
-  feeReceiverAddress,  // Protocol fee receiver address
-  salt,                // Unique order identifier
-  deadline             // Order expiration timestamp (0 = no deadline)
-);
-```
-
-### Executing a Swap
-
-The token pair is embedded in the order (`tokenA` < `tokenB` by address); the taker
-selects the swap direction with the `isAToB` flag:
-
-```typescript
-// Build taker traits
-const takerData = TakerTraitsLib.build({
-  taker: takerAddress,
-  isExactIn: true,
-  isAToB: true,               // true: tokenA -> tokenB, false: tokenB -> tokenA
-  threshold: minOutputAmount,
-  useTransferFromAndAquaPush: true
-});
-
-// Execute swap
-await swapVM.swap(
-  order,
-  amountIn,
-  takerData
-);
-```
-
-## Development
-
-### Project Structure
-
-```
-swap-vm-template/
-├── contracts/           # Smart contracts
-│   ├── AquaAMM.sol     # AMM strategy implementation
-│   ├── MockTaker.sol   # Test resolver contract
-│   └── SwapVMImport.sol # SwapVM imports
-├── deploy/             # Deployment scripts
-├── test/               # Test suite
-│   ├── AquaAMM.test.ts # Main test file
-│   └── utils/          # Test utilities
-├── typechain-types/    # Generated TypeScript types
-└── hardhat.config.ts   # Hardhat configuration
-```
-
-### Building Custom Strategies
-
-To create your own swap strategy:
-
-1. Create a new contract inheriting from SwapVM opcodes
-2. Implement your swap logic using the VM instruction set
-3. Build program bytecode using the ProgramBuilder
-4. Deploy and register with Aqua
-
-### Testing Your Strategy
-
-1. Write unit tests for your strategy logic
-2. Test with both resolver contracts and EOAs
-3. Verify gas consumption and optimization
-4. Test edge cases and error conditions
-
-## Resources
-
-
-## Disclaimer
-
-This software is provided "as is", without warranty of any kind. Use at your own risk.
-
-## 📄 License
-
-This project is licensed under the **LicenseRef-Degensoft-SwapVM-1.1**
-
-See the [LICENSE](LICENSE) file for details.
-See the [THIRD_PARTY_NOTICES](THIRD_PARTY_NOTICES) file for information about third-party software, libraries, and dependencies used in this project.
-
-**Contact for licensing inquiries:**
-- 📧 license@degensoft.com 
-- 📧 legal@degensoft.com
