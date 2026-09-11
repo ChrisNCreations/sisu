@@ -24,6 +24,18 @@ export interface RiskState {
   valueB: number;
 }
 
+export interface Balances {
+  maker: Hex;
+  virtualA: number;
+  virtualB: number;
+  virtualUsdA: number;
+  virtualUsdB: number;
+  walletA: number;
+  walletB: number;
+  walletUsdA: number;
+  walletUsdB: number;
+}
+
 export interface QuoteParams {
   strategyHash: Hex;
   tokenIn: "A" | "B";
@@ -101,6 +113,7 @@ export interface SisuSDK {
   getStrategy(strategyHash: Hex): Promise<SisuStrategy>;
   listStrategies(): Promise<SisuStrategy[]>;
   getRisk(strategyHash: Hex): Promise<RiskState>;
+  getBalances(strategyHash: Hex): Promise<Balances>;
   quoteSwap(params: QuoteParams): Promise<Quote>;
   simulateRisk(params: SimulationParams): Promise<RiskSimulation>;
   shipStrategy(params: ShipParams): Promise<TransactionRequest>;

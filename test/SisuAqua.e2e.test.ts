@@ -174,6 +174,32 @@ describe("Sisu Aqua e2e", function () {
     expect(await usdc.balanceOf(await maker.getAddress())).to.be.gt(usdcBefore);
   });
 
+  it("docks a strategy so it no longer fills", async function () {
+    const { maker, tokenA, tokenB, aqua, sisuStrategy, swapVM, eth, aggregator } =
+      await loadFixture(setup);
+
+    const { orderStruct } = await buildAndShip(
+      sisuStrategy, aqua, swapVM, maker, tokenA, tokenB, eth, aggregator, ether("1"), ether("3000")
+    );
+    const strategyHash = await swapVM.hash(orderStruct);
+
+    await aqua.connect(maker).dock(
+      await swapVM.getAddress(),
+      strategyHash,
+      [await tokenA.getAddress(), await tokenB.getAddress()]
+    );
+
+    await expect(
+      aqua.safeBalances(
+        await maker.getAddress(),
+        await swapVM.getAddress(),
+        strategyHash,
+        await tokenA.getAddress(),
+        await tokenB.getAddress()
+      )
+    ).to.be.revertedWithCustomError(aqua, "SafeBalancesForTokenNotInActiveStrategy");
+  });
+
   it("reverts on a stale mark", async function () {
     const { maker, taker, eth, tokenA, tokenB, aqua, sisuStrategy, swapVM, aggregator } =
       await loadFixture(setup);

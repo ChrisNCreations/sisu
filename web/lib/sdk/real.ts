@@ -21,6 +21,7 @@ import {
   aquaAbi,
   buildTakerTraits,
   decodeRiskLimitExceeded,
+  erc20Abi,
   getDeployment,
   publicClient,
   RATIO_ONE,
@@ -327,6 +328,39 @@ export const realSdk: SisuSDK = {
       maxRiskBps: Number(BigInt(d.maxRisk)),
       valueA: Number(formatEther(valA)),
       valueB: Number(formatEther(valB)),
+    };
+  },
+
+  async getBalances() {
+    const d = dep();
+    const { balA, balB, valA, valB, price } = await balances(d);
+    const [wBalA, wBalB] = await Promise.all([
+      publicClient.readContract({
+        address: d.tokenA,
+        abi: erc20Abi,
+        functionName: "balanceOf",
+        args: [d.maker],
+      }),
+      publicClient.readContract({
+        address: d.tokenB,
+        abi: erc20Abi,
+        functionName: "balanceOf",
+        args: [d.maker],
+      }),
+    ]);
+    const aIsEth = d.tokenA.toLowerCase() === d.eth.toLowerCase();
+    const wValA = sideValue(aIsEth, wBalA as bigint, price);
+    const wValB = sideValue(!aIsEth, wBalB as bigint, price);
+    return {
+      maker: d.maker,
+      virtualA: Number(formatEther(balA)),
+      virtualB: Number(formatEther(balB)),
+      virtualUsdA: Number(formatEther(valA)),
+      virtualUsdB: Number(formatEther(valB)),
+      walletA: Number(formatEther(wBalA as bigint)),
+      walletB: Number(formatEther(wBalB as bigint)),
+      walletUsdA: Number(formatEther(wValA)),
+      walletUsdB: Number(formatEther(wValB)),
     };
   },
 

@@ -3,8 +3,16 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { RiskMeter } from "@/components/risk-meter";
+import { DockButton } from "@/components/dock-button";
 import { sdk } from "@/lib/sdk";
-import { formatBps, formatHash, formatRisk, formatUsd } from "@/lib/format";
+import {
+  formatAddress,
+  formatBps,
+  formatHash,
+  formatRisk,
+  formatToken,
+  formatUsd,
+} from "@/lib/format";
 
 // Onchain reads at request time: never prerender without a local node.
 export const dynamic = "force-dynamic";
@@ -21,6 +29,8 @@ export default async function DashboardPage() {
       </div>
     );
   }
+
+  const balances = await sdk.getBalances(strategy.hash);
 
   const stats = [
     { label: "Total value", value: formatUsd(strategy.capitalUsd) },
@@ -112,6 +122,59 @@ export default async function DashboardPage() {
         </Card>
       </div>
 
+      <Card className="flex flex-col gap-4">
+        <div className="flex items-baseline justify-between gap-3">
+          <h3 className="text-[13px] text-fog">
+            Virtual vs maker wallet
+          </h3>
+          <span className="font-mono text-[12px] tabular text-fog">
+            {formatAddress(balances.maker)}
+          </span>
+        </div>
+        <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-[12px] md:grid-cols-4">
+          <div>
+            <dt className="text-fog">Virtual {strategy.tokenA.symbol}</dt>
+            <dd className="mt-1 font-mono text-[14px] tabular text-paper">
+              {formatToken(balances.virtualA, "")}
+            </dd>
+            <dd className="font-mono text-[12px] tabular text-fog">
+              {formatUsd(balances.virtualUsdA)}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-fog">Virtual {strategy.tokenB.symbol}</dt>
+            <dd className="mt-1 font-mono text-[14px] tabular text-paper">
+              {formatToken(balances.virtualB, "")}
+            </dd>
+            <dd className="font-mono text-[12px] tabular text-fog">
+              {formatUsd(balances.virtualUsdB)}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-fog">Wallet {strategy.tokenA.symbol}</dt>
+            <dd className="mt-1 font-mono text-[14px] tabular text-paper">
+              {formatToken(balances.walletA, "")}
+            </dd>
+            <dd className="font-mono text-[12px] tabular text-fog">
+              {formatUsd(balances.walletUsdA)}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-fog">Wallet {strategy.tokenB.symbol}</dt>
+            <dd className="mt-1 font-mono text-[14px] tabular text-paper">
+              {formatToken(balances.walletB, "")}
+            </dd>
+            <dd className="font-mono text-[12px] tabular text-fog">
+              {formatUsd(balances.walletUsdB)}
+            </dd>
+          </div>
+        </dl>
+        <p className="text-[12px] text-fog">
+          Virtual is what Aqua believes the strategy holds. Wallet is what the
+          maker can actually pay — underfunded strategies stop filling.
+        </p>
+      </Card>
+
       <section>
         <div className="mb-2 flex items-center justify-between">
           <h3 className="text-[13px] text-fog">Strategies</h3>
@@ -138,6 +201,9 @@ export default async function DashboardPage() {
             </span>
           </div>
         </Link>
+        <div className="mt-2 flex justify-end">
+          <DockButton strategyHash={strategy.hash} />
+        </div>
       </section>
     </div>
   );

@@ -1,4 +1,5 @@
 import type {
+  Balances,
   DockParams,
   Hex,
   HistoryEntry,
@@ -180,6 +181,23 @@ export const mockSdk: SisuSDK = {
       valueB: strategy.capitalUsd * strategy.allocationB,
     };
     return state;
+  },
+
+  async getBalances(): Promise<Balances> {
+    await delay();
+    const valueA = strategy.capitalUsd * strategy.allocationA;
+    const valueB = strategy.capitalUsd * strategy.allocationB;
+    return {
+      maker: "0x0000000000000000000000000000000000000000",
+      virtualA: valueA / ETH_USD,
+      virtualB: valueB / USDC_USD,
+      virtualUsdA: valueA,
+      virtualUsdB: valueB,
+      walletA: 0,
+      walletB: 0,
+      walletUsdA: 0,
+      walletUsdB: 0,
+    };
   },
 
   async quoteSwap(params) {
