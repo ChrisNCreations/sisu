@@ -13,6 +13,7 @@ import {
   createConfig,
   http,
   useAccount,
+  useConnection,
   useConnect,
   useDisconnect,
 } from "wagmi";
@@ -34,6 +35,11 @@ const queryClient = new QueryClient();
 interface WalletState {
   address: string | null;
   connecting: boolean;
+  /** True while wagmi restores the previous session on page load. */
+  reconnecting: boolean;
+  /** Human wallet name, e.g. "MetaMask" ("Browser Wallet" when undetected). */
+  walletName: string | undefined;
+  chainId: number | undefined;
   connect: () => void;
   disconnect: () => void;
 }
@@ -41,14 +47,18 @@ interface WalletState {
 const WalletContext = createContext<WalletState | null>(null);
 
 function WalletBridge({ children }: { children: ReactNode }) {
-  const { address } = useAccount();
+  const { address, chainId, connector } = useAccount();
   const { connect, isPending, connectors } = useConnect();
   const { disconnect } = useDisconnect();
+  const { isReconnecting } = useConnection();
 
   const value = useMemo<WalletState>(
     () => ({
       address: address ?? null,
       connecting: isPending,
+      reconnecting: isReconnecting,
+      walletName: connector?.name,
+      chainId,
       connect: () => {
         const connector =
           connectors.find((c) => c.id === "injected") ?? connectors[0];
@@ -56,7 +66,16 @@ function WalletBridge({ children }: { children: ReactNode }) {
       },
       disconnect: () => disconnect(),
     }),
-    [address, isPending, connectors, connect, disconnect],
+    [
+      address,
+      isPending,
+      isReconnecting,
+      connector?.name,
+      chainId,
+      connectors,
+      connect,
+      disconnect,
+    ],
   );
 
   return (
