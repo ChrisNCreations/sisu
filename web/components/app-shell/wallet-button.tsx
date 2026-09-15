@@ -10,7 +10,7 @@ export function WalletButton() {
   if (!address) {
     return (
       <Button
-        variant="pill"
+        variant="ghost"
         size="sm"
         onClick={connect}
         disabled={connecting}

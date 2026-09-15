@@ -7,7 +7,7 @@ pragma solidity 0.8.30;
 import { AquaOpcodes } from "@1inch/swap-vm/src/opcodes/AquaOpcodes.sol";
 import { ISwapVM } from "@1inch/swap-vm/src/interfaces/ISwapVM.sol";
 import { MakerTraitsLib } from "@1inch/swap-vm/src/libs/MakerTraits.sol";
-import { ProgramBuilder, Program } from "@1inch/swap-vm/test/utils/ProgramBuilder.sol";
+import { ProgramBuilder, Program } from "./libraries/ProgramBuilder.sol";
 
 import { DecayArgsBuilder } from "@1inch/swap-vm/src/instructions/Decay.sol";
 import { XYCConcentrateArgsBuilder } from "@1inch/swap-vm/src/instructions/XYCConcentrate.sol";

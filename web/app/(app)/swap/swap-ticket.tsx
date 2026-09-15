@@ -41,13 +41,14 @@ export function SwapTicket({ strategy }: { strategy: SisuStrategy }) {
 
   useEffect(() => {
     let cancelled = false;
-    if (amountIn <= 0) {
+    if (amountIn <= 0 || !address) {
       setQuote(null);
       return;
     }
     sdk
       .quoteSwap({
         strategyHash: strategy.hash,
+        trader: address as `0x${string}`,
         tokenIn,
         amountIn,
       })
@@ -60,7 +61,7 @@ export function SwapTicket({ strategy }: { strategy: SisuStrategy }) {
     return () => {
       cancelled = true;
     };
-  }, [amountIn, strategy.hash, tokenIn]);
+  }, [address, amountIn, strategy.hash, tokenIn]);
 
   const unsafe = useMemo(
     () =>
@@ -84,6 +85,7 @@ export function SwapTicket({ strategy }: { strategy: SisuStrategy }) {
     try {
       const tx = await sdk.swap({
         strategyHash: strategy.hash,
+        trader: address as `0x${string}`,
         tokenIn,
         amountIn,
         minAmountOut: quote.amountOut * 0.995,
@@ -265,7 +267,7 @@ export function SwapTicket({ strategy }: { strategy: SisuStrategy }) {
       })()}
       <p id="swap-status" className="text-[12px] text-fog" role="status">
         {status ??
-          "Projected risk is informational. The onchain instruction remains authoritative."}
+          "Projected risk is informational. The onchain limit remains authoritative."}
       </p>
       {(() => {
         if (!lastTx) return null;

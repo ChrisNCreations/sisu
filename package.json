@@ -1,7 +1,7 @@
 {
-  "name": "swap-vm-template",
+  "name": "sisu",
   "version": "0.0.1",
-  "description": "",
+  "description": "Risk-bounded ETH/USDC book on Aqua + SwapVM",
   "author": "Degensoft Ltd.",
   "license": "SEE LICENSE IN LICENSE",
   "scripts": {
@@ -9,6 +9,12 @@
     "test": "hardhat test",
     "deploy": "hardhat deploy --network",
     "deploy:localhost": "hardhat deploy --network localhost",
+    "deploy:sisu:local": "hardhat deploy --network localhost --tags Sisu",
+    "deploy:sisu:sepolia": "hardhat deploy --network sepolia --tags Sisu",
+    "seed:local": "hardhat run scripts/setup-ui.ts --network localhost",
+    "seed:sepolia": "hardhat run scripts/setup-ui.ts --network sepolia",
+    "validate:deployment:local": "hardhat run scripts/validate-deployment.ts --network localhost",
+    "validate:deployment:sepolia": "hardhat run scripts/validate-deployment.ts --network sepolia",
     "clean": "rimraf artifacts cache coverage contracts/hardhat-dependency-compiler deployments typechain-types"
   },
   "dependencies": {
@@ -40,10 +46,10 @@
     "typechain": "^8.3.2",
     "typescript": "^5.9.3"
   },
-  "resolutions":{
+  "overrides": {
     "elliptic": "6.6.1",
-    "@1inch/aqua": "https://github.com/1inch/aqua#6f05aa1ac2dcf701b0e086ad5e7606515f1fa454",
-    "@1inch/solidity-utils": "6.9.7",
-    "@openzeppelin/contracts": "5.4.0"
+    "@1inch/aqua": "$@1inch/aqua",
+    "@1inch/solidity-utils": "$@1inch/solidity-utils",
+    "@openzeppelin/contracts": "$@openzeppelin/contracts"
   }
 }

@@ -6,19 +6,23 @@ pragma solidity 0.8.30;
 
 import { ISwapVM } from "@1inch/swap-vm/src/interfaces/ISwapVM.sol";
 import { MakerTraitsLib } from "@1inch/swap-vm/src/libs/MakerTraits.sol";
-import { ProgramBuilder, Program } from "@1inch/swap-vm/test/utils/ProgramBuilder.sol";
 import { ControlsArgsBuilder } from "@1inch/swap-vm/src/instructions/Controls.sol";
 
 import { SisuOpcodes } from "../opcodes/SisuOpcodes.sol";
-import { SisuFeeArgsBuilder } from "../instructions/SisuFee.sol";
+import { SISU_BPS, SisuFeeArgsBuilder } from "../instructions/SisuFee.sol";
 import { SisuLimitArgsBuilder } from "../instructions/SisuLimit.sol";
+import { ProgramBuilder, Program } from "../libraries/ProgramBuilder.sol";
 
 /// @notice Builds a 50/50 Sisu program: SISU_FEE → XYC → SISU_LIMIT.
+/// @dev Only ETH/stable pairs are supported: `SisuValuation` prices the non-ETH leg as $1, so exactly one
+///      of `tokenA` / `tokenB` must be `ethToken`. Fee is capped at 100% (`SISU_BPS`).
 contract SisuStrategy is SisuOpcodes {
     using ProgramBuilder for Program;
 
     error ZeroMaxRisk();
     error MaxFeeBelowBaseFee(uint32 baseFee, uint32 maxFee);
+    error MaxFeeAboveBps(uint32 maxFee);
+    error UnsupportedPair(address tokenA, address tokenB, address ethToken);
 
     constructor(address aqua) SisuOpcodes(aqua) {}
 
@@ -38,7 +42,11 @@ contract SisuStrategy is SisuOpcodes {
     ) external pure returns (ISwapVM.Order memory) {
         if (maxRisk == 0) revert ZeroMaxRisk();
         if (maxFee < baseFee) revert MaxFeeBelowBaseFee(baseFee, maxFee);
+        // A fee above 100% makes the exact-in branch's `amountIn -= fee` underflow and brick the book.
+        if (maxFee > SISU_BPS) revert MaxFeeAboveBps(maxFee);
         if (tokenA > tokenB) (tokenA, tokenB) = (tokenB, tokenA);
+        // SisuValuation treats every non-eth token as $1; require exactly one ETH leg so risk is priced.
+        if ((tokenA == ethToken) == (tokenB == ethToken)) revert UnsupportedPair(tokenA, tokenB, ethToken);
 
         Program memory program = ProgramBuilder.init(_opcodes());
         bytes memory feeArgs = SisuFeeArgsBuilder.build(

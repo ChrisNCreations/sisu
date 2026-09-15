@@ -19,7 +19,6 @@ import type {
 } from "./types";
 import {
   aquaAbi,
-  buildTakerTraits,
   decodeRiskLimitExceeded,
   erc20Abi,
   getDeployment,
@@ -27,6 +26,7 @@ import {
   RATIO_ONE,
   strategyAbi,
   swapVMAbi,
+  takerTraitsFor,
   type Deployment,
 } from "@/lib/chain";
 
@@ -65,6 +65,11 @@ function normalizedRisk(risk: bigint, maxRisk: bigint): bigint {
   return r > ONE ? ONE : r;
 }
 
+// ceilDiv mirrors OpenZeppelin Math.ceilDiv used by SisuFee:
+// the fee is rounded up, so the net input is rounded down.
+function feeAmountWei(amountInWei: bigint, fee1e9: bigint): bigint {
+  return (amountInWei * fee1e9 + ONE - 1n) / ONE;
+}
 function pressure(valueIn: bigint, valueOut: bigint): number {
   if (valueIn > valueOut) return 1;
   if (valueIn < valueOut) return -1;
@@ -158,12 +163,15 @@ function extractRevertData(err: unknown): Hex | null {
     const cur = queue.shift() as Record<string, unknown> | null;
     if (!cur || typeof cur !== "object" || seen.has(cur)) continue;
     seen.add(cur);
-    if (
-      typeof cur["data"] === "string" &&
-      (cur["data"] as string).startsWith("0x") &&
-      (cur["data"] as string).length >= 138
-    ) {
-      return cur["data"] as Hex;
+    // viem nests eth_call revert bytes under `cause.raw`, not `data`.
+    const raw =
+      typeof cur["raw"] === "string"
+        ? (cur["raw"] as string)
+        : typeof cur["data"] === "string"
+          ? (cur["data"] as string)
+          : null;
+    if (raw && raw.startsWith("0x") && raw.length >= 138) {
+      return raw as Hex;
     }
     for (const v of Object.values(cur)) {
       if (v && typeof v === "object") queue.push(v);
@@ -178,8 +186,9 @@ async function quoteCore(
 ): Promise<Quote> {
   const order = orderOf(d);
   const amountInWei = parseEther(String(params.amountIn));
-  const isAToB = params.tokenIn === "A";
-  const takerTraits = buildTakerTraits({ taker: d.trader, isAToB });
+  // Preview traits carry no threshold: the Quote reports the raw amountOut
+  // and the Swap attaches the taker's minAmountOut at send time.
+  const takerTraits = takerTraitsFor({ taker: params.trader, tokenIn: params.tokenIn });
 
   const { valA, valB } = await balances(d);
   const inIsEth =
@@ -188,9 +197,30 @@ async function quoteCore(
   const currentRisk = risk1e9(valA, valB);
   const maxRisk = BigInt(d.maxRisk);
 
+  // Fee is computed from pre-trade Inventory, exactly as SisuFee does
+  // (pre-trade sides → Risk → normalized Risk → Pressure → final fee).
+  const norm =
+    maxRisk === 0n ? ONE : normalizedRisk(currentRisk, maxRisk);
+  const p = pressure(
+    params.tokenIn === "A" ? valA : valB,
+    params.tokenIn === "A" ? valB : valA,
+  );
+  const fee = finalFee(
+    BigInt(d.baseFee),
+    BigInt(d.maxFee),
+    BigInt(d.rebalanceStrength),
+    norm,
+    p,
+  );
+
   let amountOutWei = 0n;
   let postRisk = currentRisk;
   let canExecute = params.amountIn > 0;
+  // Net input mirrors SisuFee exact-in: gross minus the rounded-up fee.
+  // The onchain Limit sees this net input (Fee restores the gross only
+  // after its inner runLoop returns), so RiskPost must use it too.
+  const netInWei =
+    amountInWei - feeAmountWei(amountInWei, fee);
   try {
     const res = (await publicClient.readContract({
       address: d.swapVM,
@@ -201,7 +231,7 @@ async function quoteCore(
     amountOutWei = res[1];
     const valueInSide = params.tokenIn === "A" ? valA : valB;
     const valueOutSide = params.tokenIn === "A" ? valB : valA;
-    const valueIn = sideValue(inIsEth, amountInWei, price);
+    const valueIn = sideValue(inIsEth, netInWei, price);
     const valueOut = sideValue(!inIsEth, amountOutWei, price);
     postRisk =
       valueOut > valueOutSide
@@ -218,19 +248,17 @@ async function quoteCore(
     canExecute = false;
   }
 
-  const norm =
-    maxRisk === 0n ? ONE : normalizedRisk(currentRisk, maxRisk);
-  const p = pressure(
-    params.tokenIn === "A" ? valA : valB,
-    params.tokenIn === "A" ? valB : valA,
-  );
-  const fee = finalFee(
-    BigInt(d.baseFee),
-    BigInt(d.maxFee),
-    BigInt(d.rebalanceStrength),
-    norm,
-    p,
-  );
+  // Curve-only price impact in 1e4 bps: net input value vs output value.
+  // Fee is shown separately, so impact isolates the XYC curve.
+  const netValueIn = sideValue(inIsEth, netInWei, price);
+  const outValue = sideValue(!inIsEth, amountOutWei, price);
+  const priceImpactBps =
+    netValueIn > 0n && amountOutWei > 0n
+      ? Math.max(
+          0,
+          Math.round(Number(((netValueIn - outValue) * 10_000n) / netValueIn)),
+        )
+      : 0;
 
   const amountOut = Number(formatEther(amountOutWei));
   return {
@@ -241,7 +269,7 @@ async function quoteCore(
     postTradeRiskBps: Number(postRisk),
     maxRiskBps: Number(maxRisk),
     canExecute,
-    priceImpactBps: 0,
+    priceImpactBps,
     rate: params.amountIn > 0 ? amountOut / params.amountIn : 0,
   };
 }
@@ -258,6 +286,8 @@ async function strategyView(d: Deployment): Promise<SisuStrategy> {
   const maxRisk = BigInt(d.maxRisk);
   const norm =
     maxRisk === 0n ? ONE : normalizedRisk(currentRisk, maxRisk);
+  // Display fee assumes pressure from the A side (direction-neutral view);
+  // a real Quote recomputes it directionally per tokenIn.
   const fee = finalFee(
     BigInt(d.baseFee),
     BigInt(d.maxFee),
@@ -467,9 +497,20 @@ export const realSdk: SisuSDK = {
   async swap(params: SwapParams) {
     const d = dep();
     const amountInWei = parseEther(String(params.amountIn));
-    const takerTraits = buildTakerTraits({
-      taker: d.trader,
-      isAToB: params.tokenIn === "A",
+    // minAmountOut becomes the SwapVM threshold (min output for exact-in).
+    // Without it the taker has no slippage protection between Quote and send.
+    let threshold = 0n;
+    if (params.minAmountOut > 0) {
+      try {
+        threshold = parseEther(String(params.minAmountOut));
+      } catch {
+        threshold = 0n;
+      }
+    }
+    const takerTraits = takerTraitsFor({
+      taker: params.trader,
+      tokenIn: params.tokenIn,
+      threshold,
     });
     const data = encodeFunctionData({
       abi: swapVMAbi,

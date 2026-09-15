@@ -304,6 +304,9 @@ export function buildTakerTraits(opts: {
   isAToB: boolean;
   threshold?: bigint;
 }): Hex {
+  // Note: `taker` is informational — SwapVM reads the taker from msg.sender.
+  // `threshold` is the exact-in min output (32 bytes when set, else empty),
+  // matching TakerTraitsLib.build in sisu/test/utils/SwapVMHelpers.ts.
   const thresholdBytes =
     opts.threshold && opts.threshold > 0n
       ? padLeftBytes(opts.threshold, 32)
@@ -324,14 +327,17 @@ export function buildTakerTraits(opts: {
   return hex as Hex;
 }
 
+/** Token-direction wrapper over buildTakerTraits (isAToB = A→B of the pair). */
 export function takerTraitsFor(opts: {
   taker: Hex;
   tokenIn: "A" | "B";
-  ethIsA: boolean;
+  threshold?: bigint;
 }): Hex {
-  // isAToB refers to tokenA -> tokenB direction of the pair.
-  const isAToB = opts.tokenIn === "A";
-  return buildTakerTraits({ taker: opts.taker, isAToB });
+  return buildTakerTraits({
+    taker: opts.taker,
+    isAToB: opts.tokenIn === "A",
+    threshold: opts.threshold,
+  });
 }
 
 /** Explorer base URL for the seeded chain, or null (local node). */

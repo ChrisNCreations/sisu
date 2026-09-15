@@ -15,6 +15,9 @@ yarn-error.log*
 lerna-debug.log*
 .pnpm-debug.log*
 
+# Agent tooling: keep agent definitions, do not ship local hooks
+.grok/hooks/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

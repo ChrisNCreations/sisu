@@ -45,7 +45,7 @@ Linear tokens and density, Sisu layout.
 - One acid-lime CTA per view (`#e4f222`)
 - Inter for UI, Berkeley Mono (or JetBrains Mono) for hashes, bps, percents
 - Weights 400–590. Compact 4px spacing. Radii 6px controls / 12px cards
-- Pulse green / coral red are not status colors. Risk uses the gauge + copy.
+- Pulse green is never a status color. Coral red is reserved as the sole over-limit signal (gauge fill + alert copy). Risk uses the gauge + copy.
 
 ## Routes
 

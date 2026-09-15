@@ -20,6 +20,8 @@ import { MockAggregatorV3 } from "../typechain-types/contracts/mocks/MockAggrega
 
 const { ethers } = require("hardhat");
 
+const ONE = 10n ** 9n;
+
 describe("Sisu Aqua e2e", function () {
   async function setup() {
     const fixture = await deploySisuFixture();
@@ -106,6 +108,16 @@ describe("Sisu Aqua e2e", function () {
     });
   }
 
+  function takerDataExactOut(taker: string, isAToB: boolean) {
+    return TakerTraitsLib.build({
+      taker,
+      isExactIn: false,
+      isAToB,
+      threshold: 0n,
+      useTransferFromAndAquaPush: true
+    });
+  }
+
   it("executes a safe trade that raises risk", async function () {
     const { maker, taker, eth, usdc, tokenA, tokenB, aqua, sisuStrategy, swapVM, aggregator } =
       await loadFixture(setup);
@@ -172,6 +184,108 @@ describe("Sisu Aqua e2e", function () {
       takerData(await taker.getAddress(), !ethIsA, 0n)
     );
     expect(await usdc.balanceOf(await maker.getAddress())).to.be.gt(usdcBefore);
+  });
+
+  it("settles an exact-out swap and charges the fee on top of the XYC input", async function () {
+    const { maker, taker, eth, usdc, tokenA, tokenB, aqua, sisuStrategy, swapVM, aggregator } =
+      await loadFixture(setup);
+
+    const { orderStruct, ethIsA } = await buildAndShip(
+      sisuStrategy, aqua, swapVM, maker, tokenA, tokenB, eth, aggregator, ether("1"), ether("3000")
+    );
+
+    const strategyHash = await swapVM.hash(orderStruct);
+    const [balA, balB] = await aqua.safeBalances(
+      await maker.getAddress(),
+      await swapVM.getAddress(),
+      strategyHash,
+      await tokenA.getAddress(),
+      await tokenB.getAddress()
+    );
+    const balanceIn = ethIsA ? balA : balB;
+    const balanceOut = ethIsA ? balB : balA;
+
+    // Buy an exact 142 USDC with ETH; the fee book is still balanced so the fee is baseFee.
+    const amountOut = ether("142");
+    const amountOutSide = balanceOut - amountOut;
+    const xycAmountIn = (amountOut * balanceIn + amountOutSide - 1n) / amountOutSide;
+
+    const takerAddr = await taker.getAddress();
+    const traits = takerDataExactOut(takerAddr, ethIsA);
+    const [quotedIn, quotedOut] = await swapVM.quote.staticCall(orderStruct, amountOut, traits);
+
+    expect(quotedOut).to.equal(amountOut);
+    expect(quotedIn).to.be.gt(xycAmountIn); // SisuFee grosses the input up to cover the fee
+    const fee = quotedIn - xycAmountIn;
+    expect(fee).to.be.gte(xycAmountIn * BASE_FEE / ONE / 2n);
+    expect(fee).to.be.lte(xycAmountIn * MAX_FEE / ONE);
+
+    const ethBefore = await eth.balanceOf(takerAddr);
+    const usdcBefore = await usdc.balanceOf(takerAddr);
+    await (await swapVM.connect(taker).swap(orderStruct, amountOut, traits)).wait();
+
+    expect(await usdc.balanceOf(takerAddr)).to.equal(usdcBefore + amountOut);
+    expect(await eth.balanceOf(takerAddr)).to.equal(ethBefore - quotedIn);
+  });
+
+  it("charges a repairing swap a lower fee than a worsening swap", async function () {
+    const { maker, taker, eth, usdc, tokenA, tokenB, aqua, sisuStrategy, swapVM, aggregator } =
+      await loadFixture(setup);
+
+    const { orderStruct, ethIsA } = await buildAndShip(
+      sisuStrategy, aqua, swapVM, maker, tokenA, tokenB, eth, aggregator, ether("1"), ether("3000")
+    );
+    const makerAddr = await maker.getAddress();
+    const takerAddr = await taker.getAddress();
+    const swapVMAddr = await swapVM.getAddress();
+    const tokenAAddr = await tokenA.getAddress();
+    const tokenBAddr = await tokenB.getAddress();
+
+    // ETH in makes the ETH side overweight by value, so ETH-in worsens and USDC-in repairs.
+    await swapVM.connect(taker).swap(orderStruct, ether("0.2"), takerData(takerAddr, ethIsA, 0n));
+
+    // Mirror the fee book's live balances into a zero-fee control book at the same state.
+    const feeHash = await swapVM.hash(orderStruct);
+    const [balA, balB] = await aqua.safeBalances(makerAddr, swapVMAddr, feeHash, tokenAAddr, tokenBAddr);
+    const controlOrder = await sisuStrategy.buildProgram(
+      makerAddr,
+      tokenAAddr,
+      tokenBAddr,
+      await aggregator.getAddress(),
+      await eth.getAddress(),
+      MAX_STALENESS,
+      MAX_RISK,
+      0n, // baseFee
+      0n, // maxFee
+      0n, // rebalanceStrength, so the fee is always zero
+      2n, // salt keeps the control hash distinct
+      0
+    );
+    const controlStruct = { maker: controlOrder.maker, traits: controlOrder.traits, data: controlOrder.data };
+    await aqua.connect(maker).ship(
+      swapVMAddr,
+      ethers.AbiCoder.defaultAbiCoder().encode(
+        ["tuple(address maker, uint256 traits, bytes data)"],
+        [controlStruct]
+      ),
+      [tokenAAddr, tokenBAddr],
+      [balA, balB]
+    );
+
+    // The control's exact-out input is the raw XYC input, so the gap is the Sisu fee in 1e9 bps.
+    async function impliedFeeBps(isAToB: boolean, amountOut: bigint) {
+      const traits = takerDataExactOut(takerAddr, isAToB);
+      const [inFee] = await swapVM.quote.staticCall(orderStruct, amountOut, traits);
+      const [inControl] = await swapVM.quote.staticCall(controlStruct, amountOut, traits);
+      return (inFee * ONE) / inControl - ONE;
+    }
+
+    const worsening = await impliedFeeBps(ethIsA, ether("100"));
+    const repairing = await impliedFeeBps(!ethIsA, ether("0.05"));
+
+    expect(worsening).to.be.gt(BASE_FEE);
+    expect(repairing).to.be.lt(BASE_FEE);
+    expect(repairing).to.be.lt(worsening);
   });
 
   it("docks a strategy so it no longer fills", async function () {
