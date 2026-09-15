@@ -42,6 +42,9 @@ function sepoliaNetwork(): { url: string; accounts: string[]; chainId: number } 
 }
 
 const config: HardhatUserConfig = {
+  paths: {
+    deploy: "deploy-entrypoints",
+  },
   networks: {
     hardhat: {
       allowUnlimitedContractSize: true,
@@ -93,21 +96,11 @@ const config: HardhatUserConfig = {
     outDir: "typechain-types",
   },
   etherscan: {
-    apiKey: {
-      // Etherscan API V2 uses one key for all chains.
-      sepolia: process.env.ETHERSCAN_API_KEY || "",
-      mainnet: process.env.ETHERSCAN_API_KEY || "",
-    },
-    customChains: [
-      {
-        network: "sepolia",
-        chainId: 11155111,
-        urls: {
-          apiURL: "https://api.etherscan.io/v2/api?chainid=11155111",
-          browserURL: "https://sepolia.etherscan.io",
-        },
-      },
-    ],
+    // Etherscan API V2: one key for all chains. hardhat-verify's built-in chain
+    // list routes every known chain (incl. Sepolia) through v2 with chainid.
+    // A customChains entry here would override the built-in Sepolia and drop
+    // the chainid param on status polling, so it must not be reintroduced.
+    apiKey: process.env.ETHERSCAN_API_KEY || "",
   }
 };
 
