@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { ArrowDownUp } from "lucide-react";
 import { useWalletClient } from "wagmi";
-import { parseEther } from "viem";
+import { parseUnits } from "viem";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -252,7 +252,7 @@ export function SwapTicket({ strategy }: { strategy: SisuStrategy }) {
         if (!deployment || amountIn <= 0) return null;
         let amountWei = 0n;
         try {
-          amountWei = parseEther(amount);
+          amountWei = parseUnits(amount, inToken.decimals);
         } catch {
           return null;
         }

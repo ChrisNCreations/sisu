@@ -13,7 +13,7 @@ Sisu is a self-custodial, risk-bounded XYC book on Aqua/SwapVM.
 - Inventory is valued in USD (ETH/USD aggregator, USDC = $1).
 - After every trade: `RiskPost = |A−B| / (A+B)`. If `RiskPost > maxRisk`, the swap reverts. No tokens move.
 - Fees: trades that worsen 50/50 pay more; trades that repair it pay less, floor 0, never a rebate.
-- The UI estimates. SwapVM enforces. `app/lib` cannot bypass the limit.
+- The UI estimates. SwapVM enforces. `web/lib` cannot bypass the limit.
 
 Hackathon win: custom opcodes, visible onchain transfers, git history that is not a final-day dump, judge-visible revert **Trade exceeds strategy risk limit**.
 
@@ -21,16 +21,16 @@ Hackathon win: custom opcodes, visible onchain transfers, git history that is no
 
 | Role | Account | Routes |
 |------|---------|--------|
-| LP / maker | Hardhat #0 | Dashboard, Create, Dock |
-| Trader / taker | Hardhat #1 | Swap (and History of their txs) |
+| LP / maker | Hardhat #0 locally; configured maker on Sepolia | Dashboard, Strategy, Dock |
+| Trader / taker | Hardhat #1 locally; any connected wallet on Sepolia | Swap (and History of their txs) |
 
-Switch in MetaMask. Demo funds both. Do not require one EOA to be both.
+Switch in MetaMask. Local demo funds both. Do not require one EOA to be both.
 
 ## Stack
 
 - Next.js App Router at `sisu/web/`
 - TypeScript, Tailwind v4 using `sisu/design/theme.css` + `variables.css`
-- wagmi + viem, injected wallet only, chain Hardhat `31337`
+- wagmi + viem, injected wallet only. Chain id and RPC come from the seed manifest (Hardhat `31337` locally, Sepolia `11155111` for a public seed). Do not add WalletConnect or RainbowKit.
 - recharts for **one** Dashboard allocation split
 - React Bits only for decorative/motion that does not fight tokens
 - Core UI hand-built from tokens. No Linear sidebar, command palette, or issue-tracker chrome
@@ -49,12 +49,12 @@ Linear tokens and density, Sisu layout.
 
 ## Routes
 
-Compact top nav: Dashboard · Create · Swap · History · Connect.
+Compact top nav: Dashboard · Strategy · Swap · History · Connect. `/` is a static landing page with no wallet.
 
 | Route | Job |
 |-------|-----|
-| `/` Dashboard | Home. Seeded strategy state. Allocation chart. Risk gauge. Virtual vs wallet. Dock. |
-| `/strategy/create` | LP ships a 50/50 book. Not a gate for Swap. |
+| `/dashboard` | Home. Seeded strategy state. Allocation chart. Risk gauge. Virtual vs wallet. Dock. |
+| `/strategy` | Maker ships a 50/50 book. Not a gate for Swap. Hide or admin-label this route in a public Sepolia build until wrap and wallet-ownership are correct. |
 | `/swap` | Judging surface. Quote + clickable unsafe swap. |
 | `/history` | Local/session tx log. No indexer. |
 

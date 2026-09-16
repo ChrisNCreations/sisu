@@ -85,7 +85,11 @@ Seeded 2026-09-11 on Sepolia (chain 11155111), same policy as local: 1 ETH + 300
 
 Router creation tx: https://sepolia.etherscan.io/tx/0x151d66e13e2df09c3bfbbdf319f2545aeab966312bd13be598f22fcbf04fa56f
 
-All three product contracts show green source ticks (Aqua matched 1inch's verified bytecode; Strategy + Router verified via `scripts/verify-etherscan.ts`, solc 0.8.30, optimizer runs 1, Cancun). Full address table: `DEPLOYMENT_INFO.md`. To run the UI against Sepolia, rebuild `web/` with this deployment in `web/lib/deployment.json`.
+All three product contracts show green source ticks (Aqua matched 1inch's verified bytecode; Strategy + Router verified via `scripts/verify-etherscan.ts`, solc 0.8.30, optimizer runs 1, Cancun). Full address table: `DEPLOYMENT_INFO.md`.
+
+That 2026-09-11 seed is a **judged mock-asset** deployment (mock ETH, mock USDC, mock mark). It is not the supported public path. `npm run deploy:sisu:sepolia` never deploys mocks; it consumes configured `SISU_WETH_ADDRESS`, `SISU_USDC_ADDRESS`, and `SISU_ORACLE_ADDRESS`. See `.env.example`. Testnet liquidity is experimental — do not deposit valuable assets.
+
+To run the UI against a seed, copy the written manifest into `web/lib/deployment.json` (gitignored) and rebuild `web/`. Chain id and RPC follow that manifest.
 
 ## On-chain proof
 
@@ -106,17 +110,18 @@ The Sepolia deployment is a **liveness and deployment** proof, not the security 
 
 ## Quickstart (judge path, ~3 minutes)
 
+From this directory (`sisu/`).
+
 Terminal 1 — node:
 
 ```bash
-cd sisu
 npx hardhat node
 ```
 
-Terminal 2 — seed (deploys, funds accounts 0 + 1, ships one 50/50 book):
+Terminal 2 — seed (deploys local mocks, funds accounts 0 + 1, ships one 50/50 book, writes `web/lib/deployment.json`):
 
 ```bash
-npx hardhat run scripts/setup-ui.ts --network localhost
+npm run seed:local
 ```
 
 Terminal 3 — UI:
@@ -127,14 +132,16 @@ npm install
 npm run dev      # http://localhost:3000
 ```
 
-Open `/` (landing), then **Launch App** to `/dashboard`. In MetaMask, import Hardhat account 1 (trader) and connect to `http://127.0.0.1:8545` (chain 31337). Approve prompts appear in-UI when needed.
+Open `/` (landing), then **Launch App** to `/dashboard`. In MetaMask, import Hardhat account 1 (trader) and connect to `http://127.0.0.1:8545` (chain 31337). The header **Connect** button names the installed injected wallet (EIP-6963). Approve prompts appear in-UI when needed.
 
 Headless proof of the same flow:
 
 ```bash
-npx hardhat test                                   # 42 passing
+npx hardhat test
 npx hardhat run scripts/verify-trader.ts --network localhost
 ```
+
+Product deploy (not required for the judge path): `npm run deploy:sisu:local` then `npm run validate:deployment:local`. Sepolia deploy needs the `SISU_*` env vars in `.env.example` and never deploys mocks.
 
 ## Judging script
 
@@ -143,14 +150,17 @@ npx hardhat run scripts/verify-trader.ts --network localhost
 3. **Unsafe swap** — 5 ETH stays clickable, submits, and reverts: **Trade exceeds strategy risk limit** plus current / projected / max. No tokens move. History logs it as `reverted`.
 4. **Repair swap** — swap back (USDC → ETH). It settles and risk falls; the fee is lower than the worsening direction.
 
+The local seed is the judging surface. A public Sepolia build still needs a WETH wrap step, a wallet chain-mismatch explanation, and connected-wallet faucet-balance gates (`docs/STATUS.md`). Unseeded `web/` falls back to the mock SDK.
+
 ## Stack
 
 | Layer | Choice |
 |-------|--------|
 | Contracts | Solidity 0.8.30, Cancun, viaIR, optimizer runs 1 |
 | Build / test | Hardhat 2.22, hardhat-deploy |
-| Chain client | viem 2.x, wagmi (injected wallet only, Hardhat 31337) |
-| Frontend | Next.js 16 App Router, TypeScript, Tailwind v4, recharts (one allocation split) |
+| Chain client | viem 2.x, wagmi injected only. Chain id and RPC come from the seed manifest (Hardhat `31337` or Sepolia `11155111`). Named Connect CTA via EIP-6963; connected pill copies, links the explorer, and disconnects. |
+| Frontend | Next.js 16 App Router, TypeScript, Tailwind v4, recharts (one allocation split). Compact top bar — no command palette. |
+| Onchain UI | `web/lib/sdk/real.ts` when `web/lib/deployment.json` is present (quote, ship, swap, dock, revert decode, manifest decimals). `mock.ts` fallback without a seed. |
 | Landing | Static `web/app/page.tsx` — no wallet, no SDK, no seed needed |
 | App | `web/app/(app)/` — Dashboard `/dashboard`, Strategy `/strategy`, Swap `/swap`, History `/history` |
 | Settlement | Aqua (virtual balances) + SwapVM (`SISU_FEE` opcode 34, `SISU_LIMIT` opcode 35) |
@@ -201,9 +211,10 @@ This repository builds on 1inch's SwapVM template and is distributed under the t
 ```text
 sisu/                       git root
 ├── contracts/              SisuFee, SisuLimit, SisuStrategy, SisuSwapVMRouter, libs
-├── test/                   risk-math units + Aqua e2e (safe/unsafe/repair/stale)
+├── test/                   risk-math units + Aqua e2e + deploy-config
 ├── deploy/                 deploy-sisu.ts (Sisu path) + deploy-aqua.ts (template)
-├── scripts/                setup-ui.ts (seed), verify-trader.ts (headless proof)
+├── deploy-entrypoints/     hardhat-deploy loaders (paths.deploy)
+├── scripts/                setup-ui.ts (seed), validate-deployment.ts, verify-trader.ts
 ├── web/                    Next.js UI — landing / + app /dashboard /strategy /swap /history
 └── DEPLOYMENT_INFO.md      networks, seed values, explorer links
 ```

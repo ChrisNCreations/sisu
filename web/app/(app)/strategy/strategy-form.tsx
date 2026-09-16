@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useWalletClient } from "wagmi";
-import { parseEther } from "viem";
+import { parseUnits } from "viem";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -11,10 +11,9 @@ import { useWallet } from "@/components/providers";
 import { sdk, appendHistory, type SisuStrategy } from "@/lib/sdk";
 import { explorerTxUrl, getDeployment, publicClient } from "@/lib/chain";
 
-function toWei(value: string): bigint | null {
+function toUnits(value: string, decimals: number): bigint | null {
   try {
-    const wei = parseEther(value || "0");
-    return wei;
+    return parseUnits(value || "0", decimals);
   } catch {
     return null;
   }
@@ -250,24 +249,32 @@ export function StrategyForm({ strategy }: { strategy: SisuStrategy }) {
           if (!deployment) return null;
           const val = (id: string) =>
             fields.find((field) => field.id === id)?.value ?? "";
-          const ethWei = toWei(val("depositEth"));
-          const usdcWei = toWei(val("depositUsdc"));
-          if (ethWei === null && usdcWei === null) return null;
+          const tokenAIsEth =
+            strategy.tokenA.address.toLowerCase() === deployment.eth.toLowerCase();
+          const amountA = toUnits(
+            tokenAIsEth ? val("depositEth") : val("depositUsdc"),
+            strategy.tokenA.decimals,
+          );
+          const amountB = toUnits(
+            tokenAIsEth ? val("depositUsdc") : val("depositEth"),
+            strategy.tokenB.decimals,
+          );
+          if (amountA === null && amountB === null) return null;
           return (
             <div className="flex flex-col gap-2">
-              {ethWei !== null && ethWei > 0n && (
+              {amountA !== null && amountA > 0n && (
                 <ApproveButton
                   token={strategy.tokenA.address}
                   spender={deployment.aqua}
-                  needed={ethWei}
+                  needed={amountA}
                   symbol={strategy.tokenA.symbol}
                 />
               )}
-              {usdcWei !== null && usdcWei > 0n && (
+              {amountB !== null && amountB > 0n && (
                 <ApproveButton
                   token={strategy.tokenB.address}
                   spender={deployment.aqua}
-                  needed={usdcWei}
+                  needed={amountB}
                   symbol={strategy.tokenB.symbol}
                 />
               )}

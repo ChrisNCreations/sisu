@@ -236,6 +236,8 @@ describe('Sisu deployment', () => {
       process.env.SISU_WETH_ADDRESS = weth;
       process.env.SISU_USDC_ADDRESS = usdc;
       process.env.SISU_ORACLE_ADDRESS = oracle;
+      delete process.env.SISU_ORACLE_MAX_STALENESS;
+      delete process.env.SISU_ORACLE_HEARTBEAT;
 
       const assets = await resolveExternalAssets(ethers.provider, 11155111);
       expect(assets.weth).to.equal(weth);

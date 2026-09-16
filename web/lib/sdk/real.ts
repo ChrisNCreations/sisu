@@ -1,7 +1,9 @@
 import {
   encodeFunctionData,
   formatEther,
+  formatUnits,
   parseEther,
+  parseUnits,
   type Hex,
 } from "viem";
 import type {
@@ -92,7 +94,24 @@ function finalFee(
   return fee > maxFee ? maxFee : fee;
 }
 
-// --- Mark + balances (demo tokens are 18-decimal TokenMocks) ---
+function tokenMeta(d: Deployment, token: Hex): { decimals: number; symbol: string } {
+  const isEth = token.toLowerCase() === d.eth.toLowerCase();
+  const meta = isEth ? d.tokens?.eth : d.tokens?.usdc;
+  return {
+    decimals: meta?.decimals ?? 18,
+    symbol: meta?.symbol ?? (isEth ? "WETH" : "USDC"),
+  };
+}
+
+function tokenUnits(value: string | number, decimals: number): bigint {
+  return parseUnits(String(value), decimals);
+}
+
+function tokenNumber(value: bigint, decimals: number): number {
+  return Number(formatUnits(value, decimals));
+}
+
+// --- Mark + balances ---
 async function markPrice(d: Deployment): Promise<bigint> {
   const res = (await publicClient.readContract({
     address: d.aggregator,
@@ -120,12 +139,15 @@ function sideValue(
   isEth: boolean,
   amount: bigint,
   price: bigint,
-  priceDecimals = 8,
+  tokenDecimals: number,
+  priceDecimals: number,
 ): bigint {
-  // Mirrors valueUsd(amount, price, 18, priceDecimals); USDC counts as $1.
-  const scale = 10n ** BigInt(priceDecimals);
-  if (isEth) return (amount * price) / scale;
-  return amount;
+  const tokenScale = 10n ** BigInt(tokenDecimals);
+  const priceScale = 10n ** BigInt(priceDecimals);
+  if (isEth) {
+    return (amount * price * 10n ** 18n) / tokenScale / priceScale;
+  }
+  return (amount * 10n ** 18n) / tokenScale;
 }
 
 async function balances(d: Deployment): Promise<{
@@ -147,11 +169,14 @@ async function balances(d: Deployment): Promise<{
   const balA = res[0] as bigint;
   const balB = res[1] as bigint;
   const aIsEth = d.tokenA.toLowerCase() === d.eth.toLowerCase();
+  const priceDecimals = d.oracle?.decimals ?? 8;
+  const decimalsA = tokenMeta(d, d.tokenA).decimals;
+  const decimalsB = tokenMeta(d, d.tokenB).decimals;
   return {
     balA,
     balB,
-    valA: sideValue(aIsEth, balA, price),
-    valB: sideValue(!aIsEth, balB, price),
+    valA: sideValue(aIsEth, balA, price, decimalsA, priceDecimals),
+    valB: sideValue(!aIsEth, balB, price, decimalsB, priceDecimals),
     price,
   };
 }
@@ -185,7 +210,9 @@ async function quoteCore(
   params: QuoteParams,
 ): Promise<Quote> {
   const order = orderOf(d);
-  const amountInWei = parseEther(String(params.amountIn));
+  const tokenIn = params.tokenIn === "A" ? d.tokenA : d.tokenB;
+  const tokenOut = params.tokenIn === "A" ? d.tokenB : d.tokenA;
+  const amountInWei = tokenUnits(params.amountIn, tokenMeta(d, tokenIn).decimals);
   // Preview traits carry no threshold: the Quote reports the raw amountOut
   // and the Swap attaches the taker's minAmountOut at send time.
   const takerTraits = takerTraitsFor({ taker: params.trader, tokenIn: params.tokenIn });
@@ -231,8 +258,20 @@ async function quoteCore(
     amountOutWei = res[1];
     const valueInSide = params.tokenIn === "A" ? valA : valB;
     const valueOutSide = params.tokenIn === "A" ? valB : valA;
-    const valueIn = sideValue(inIsEth, netInWei, price);
-    const valueOut = sideValue(!inIsEth, amountOutWei, price);
+      const valueIn = sideValue(
+        inIsEth,
+        netInWei,
+        price,
+        tokenMeta(d, tokenIn).decimals,
+        d.oracle?.decimals ?? 8,
+      );
+      const valueOut = sideValue(
+        !inIsEth,
+        amountOutWei,
+        price,
+        tokenMeta(d, tokenOut).decimals,
+        d.oracle?.decimals ?? 8,
+      );
     postRisk =
       valueOut > valueOutSide
         ? ONE
@@ -250,8 +289,20 @@ async function quoteCore(
 
   // Curve-only price impact in 1e4 bps: net input value vs output value.
   // Fee is shown separately, so impact isolates the XYC curve.
-  const netValueIn = sideValue(inIsEth, netInWei, price);
-  const outValue = sideValue(!inIsEth, amountOutWei, price);
+  const netValueIn = sideValue(
+    inIsEth,
+    netInWei,
+    price,
+    tokenMeta(d, tokenIn).decimals,
+    d.oracle?.decimals ?? 8,
+  );
+  const outValue = sideValue(
+    !inIsEth,
+    amountOutWei,
+    price,
+    tokenMeta(d, tokenOut).decimals,
+    d.oracle?.decimals ?? 8,
+  );
   const priceImpactBps =
     netValueIn > 0n && amountOutWei > 0n
       ? Math.max(
@@ -260,7 +311,7 @@ async function quoteCore(
         )
       : 0;
 
-  const amountOut = Number(formatEther(amountOutWei));
+  const amountOut = tokenNumber(amountOutWei, tokenMeta(d, tokenOut).decimals);
   return {
     amountIn: params.amountIn,
     amountOut,
@@ -276,12 +327,9 @@ async function quoteCore(
 
 async function strategyView(d: Deployment): Promise<SisuStrategy> {
   const { balA, balB, valA, valB, price } = await balances(d);
-  const ethPrice = Number(price) / 1e8;
   const aIsEth = d.tokenA.toLowerCase() === d.eth.toLowerCase();
-  const capitalUsd =
-    Number(formatEther(balA)) * (aIsEth ? ethPrice : 1) +
-    Number(formatEther(balB)) * (aIsEth ? 1 : ethPrice);
   const total = valA + valB;
+  const capitalUsd = Number(formatEther(total));
   const currentRisk = risk1e9(valA, valB);
   const maxRisk = BigInt(d.maxRisk);
   const norm =
@@ -297,8 +345,8 @@ async function strategyView(d: Deployment): Promise<SisuStrategy> {
   );
   return {
     hash: d.orderHash as Hex,
-    tokenA: { symbol: "ETH", address: d.eth, decimals: 18 },
-    tokenB: { symbol: "USDC", address: d.usdc, decimals: 18 },
+    tokenA: { symbol: tokenMeta(d, d.tokenA).symbol, address: d.tokenA, decimals: tokenMeta(d, d.tokenA).decimals },
+    tokenB: { symbol: tokenMeta(d, d.tokenB).symbol, address: d.tokenB, decimals: tokenMeta(d, d.tokenB).decimals },
     capitalUsd,
     allocationA:
       total === 0n ? 0.5 : Number((valA * 1_000_000n) / total) / 1_000_000,
@@ -379,16 +427,16 @@ export const realSdk: SisuSDK = {
       }),
     ]);
     const aIsEth = d.tokenA.toLowerCase() === d.eth.toLowerCase();
-    const wValA = sideValue(aIsEth, wBalA as bigint, price);
-    const wValB = sideValue(!aIsEth, wBalB as bigint, price);
+    const wValA = sideValue(aIsEth, wBalA as bigint, price, tokenMeta(d, d.tokenA).decimals, d.oracle?.decimals ?? 8);
+    const wValB = sideValue(!aIsEth, wBalB as bigint, price, tokenMeta(d, d.tokenB).decimals, d.oracle?.decimals ?? 8);
     return {
       maker: d.maker,
-      virtualA: Number(formatEther(balA)),
-      virtualB: Number(formatEther(balB)),
+      virtualA: tokenNumber(balA, tokenMeta(d, d.tokenA).decimals),
+      virtualB: tokenNumber(balB, tokenMeta(d, d.tokenB).decimals),
       virtualUsdA: Number(formatEther(valA)),
       virtualUsdB: Number(formatEther(valB)),
-      walletA: Number(formatEther(wBalA as bigint)),
-      walletB: Number(formatEther(wBalB as bigint)),
+      walletA: tokenNumber(wBalA as bigint, tokenMeta(d, d.tokenA).decimals),
+      walletB: tokenNumber(wBalB as bigint, tokenMeta(d, d.tokenB).decimals),
       walletUsdA: Number(formatEther(wValA)),
       walletUsdB: Number(formatEther(wValB)),
     };
@@ -446,15 +494,13 @@ export const realSdk: SisuSDK = {
     })) as unknown as readonly [Hex, bigint, Hex];
     const order: Order = { maker: built[0], traits: built[1], data: built[2] };
     const ethAddr = d.eth.toLowerCase();
-    const amtA = parseEther(
-      String(
-        sortedA.toLowerCase() === ethAddr ? params.depositEth : params.depositUsdc,
-      ),
+    const amtA = tokenUnits(
+      sortedA.toLowerCase() === ethAddr ? params.depositEth : params.depositUsdc,
+      tokenMeta(d, sortedA).decimals,
     );
-    const amtB = parseEther(
-      String(
-        sortedB.toLowerCase() === ethAddr ? params.depositEth : params.depositUsdc,
-      ),
+    const amtB = tokenUnits(
+      sortedB.toLowerCase() === ethAddr ? params.depositEth : params.depositUsdc,
+      tokenMeta(d, sortedB).decimals,
     );
     const { encodeAbiParameters } = await import("viem");
     const strategy = encodeAbiParameters(
@@ -496,13 +542,15 @@ export const realSdk: SisuSDK = {
 
   async swap(params: SwapParams) {
     const d = dep();
-    const amountInWei = parseEther(String(params.amountIn));
+    const tokenIn = params.tokenIn === "A" ? d.tokenA : d.tokenB;
+    const amountInWei = tokenUnits(params.amountIn, tokenMeta(d, tokenIn).decimals);
     // minAmountOut becomes the SwapVM threshold (min output for exact-in).
     // Without it the taker has no slippage protection between Quote and send.
     let threshold = 0n;
     if (params.minAmountOut > 0) {
       try {
-        threshold = parseEther(String(params.minAmountOut));
+        const tokenOut = params.tokenIn === "A" ? d.tokenB : d.tokenA;
+        threshold = tokenUnits(params.minAmountOut, tokenMeta(d, tokenOut).decimals);
       } catch {
         threshold = 0n;
       }

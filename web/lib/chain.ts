@@ -27,6 +27,16 @@ export interface Deployment {
   trader: Hex;
   order: { maker: Hex; traits: string; data: Hex };
   orderHash: Hex;
+  tokens?: {
+    eth: { address: Hex; symbol: string; decimals: number };
+    usdc: { address: Hex; symbol: string; decimals: number };
+  };
+  oracle?: {
+    address: Hex;
+    decimals: number;
+    heartbeat: number;
+    maxStaleness: number;
+  };
 }
 
 const ZERO = "0x0000000000000000000000000000000000000000" as Hex;
@@ -78,6 +88,26 @@ export const publicClient = createPublicClient({
   chain: hardhatChain,
   transport: http(deploymentRpc()),
 });
+
+// --- Node reachability probe (UX signal, not a data fallback) ---
+// eth_chainId is the cheapest RPC that proves the node answers. Result is
+// cached for a short TTL so the header indicator can poll without spamming.
+let probeCache: { ok: boolean; at: number } | null = null;
+const PROBE_TTL_MS = 5_000;
+
+export async function probeNode(): Promise<boolean> {
+  if (probeCache && Date.now() - probeCache.at < PROBE_TTL_MS) {
+    return probeCache.ok;
+  }
+  let ok = false;
+  try {
+    ok = (await publicClient.request({ method: "eth_chainId" })) != null;
+  } catch {
+    ok = false;
+  }
+  probeCache = { ok, at: Date.now() };
+  return ok;
+}
 
 const orderTuple = {
   type: "tuple",
