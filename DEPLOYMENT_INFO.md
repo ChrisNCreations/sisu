@@ -6,8 +6,22 @@ Where Sisu is deployed, with what seed, and where to click.
 
 | Network   | RPC | Chain | Status |
 |-----------|-----|-------|--------|
-| Hardhat local | `http://127.0.0.1:8545` | 31337 | Live seed path |
-| Sepolia | `SEPOLIA_RPC_URL` from `.env` | 11155111 | **Seeded 2026-09-11 — judged deployment** |
+| Hardhat local | `http://127.0.0.1:8545` | 31337 | Live seed path (mocks) |
+| Sepolia | `SEPOLIA_RPC_URL` from `.env` | 11155111 | Pair frozen 2026-09-16. Featured book **not yet seeded**. 2026-09-11 TokenMock seed is historical. |
+
+## Intended public pair (Sepolia, unseeded until slice 2)
+
+Verified read-only on 2026-09-16 against `https://ethereum-sepolia-rpc.publicnode.com` (chain 11155111). No transactions were sent. Fill `SISU_*` from `.env.example`.
+
+| Asset | Source | Address | On-chain |
+|-------|--------|---------|----------|
+| WETH | Uniswap Sepolia WETH9 | [`0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14`](https://sepolia.etherscan.io/address/0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14) | symbol `WETH`, name Wrapped Ether, 18 decimals |
+| USDC | Circle official Sepolia USDC | [`0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238`](https://sepolia.etherscan.io/address/0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238) | symbol `USDC`, 6 decimals. Faucet: https://faucet.circle.com |
+| Mark | Chainlink ETH/USD | [`0x694AA1769357215DE4FAC081bf1f309aDC325306`](https://sepolia.etherscan.io/address/0x694AA1769357215DE4FAC081bf1f309aDC325306) | `description` = `ETH / USD`, 8 decimals, positive complete round, age ~43m |
+
+Heartbeat 3600s, `SISU_ORACLE_MAX_STALENESS=7200`. Do not deploy `WETHMock`, `TokenMock`, or `MockAggregatorV3` on this network. Testnet USDC has no dollar backing.
+
+Sisu product contracts for this pair are **not deployed yet**. Slice 2 of `docs/PUBLIC_TESTNET.md` ships the featured book.
 
 ## Local seed (`scripts/setup-ui.ts --network localhost`)
 
@@ -19,10 +33,10 @@ Where Sisu is deployed, with what seed, and where to click.
 - Writes `web/lib/deployment.json` (gitignored; schema in
   `web/lib/deployment.example.json`).
 
-## Sepolia seed (2026-09-11, deployer `0x446F4fab225EEa73e53484D38D2D6089D82f00D2`)
+## Historical: judged Sepolia seed (2026-09-11)
 
-Same stack and policy as local. Single-key network, so maker = trader =
-deployer. Strategy order hash:
+**Not the public product.** Mock ETH, mock USDC, mock mark. Maker = trader =
+deployer `0x446F4fab225EEa73e53484D38D2D6089D82f00D2`. Strategy order hash:
 
 `0x52c63c3e302c68bd1050795353a111c7b650800330aa56511aeae7eb41f8e12c`
 

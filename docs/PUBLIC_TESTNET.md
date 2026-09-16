@@ -50,13 +50,13 @@ Local Hardhat mocks remain for tests and `npm run seed:local` only.
 | Public UI mocks | Out. No `mock.ts` book on a public build. No silent localhost RPC. |
 | Wallet | Injected only (wagmi). No WalletConnect / RainbowKit in v1. |
 
-### Proposed pair freeze — verify on-chain before writing `.env`
+### Pair freeze — verified 2026-09-16 (read-only)
 
-These are **candidates**, not yet locked. `eth_call` decimals, symbol, and `latestRoundData()` on Sepolia. Fail if anything is missing, stale, or non-positive.
+`eth_call` against Sepolia public RPC: bytecode present, symbols/decimals match, oracle `description` is `ETH / USD`, latest round positive, complete, age ~43 minutes.
 
-| Asset | Source | Address | Expected decimals |
-|-------|--------|---------|-------------------|
-| WETH | Uniswap Sepolia WETH9 | `0xfff9976782d46cc05630d1f6ebab18b2324d6b14` | 18 |
+| Asset | Source | Address | Decimals |
+|-------|--------|---------|----------|
+| WETH | Uniswap Sepolia WETH9 | `0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14` | 18 |
 | USDC | Circle Sepolia USDC | `0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238` | 6 |
 | Oracle | Chainlink ETH/USD Sepolia | `0x694AA1769357215DE4FAC081bf1f309aDC325306` | 8 |
 
@@ -116,11 +116,7 @@ Each slice is one conventional commit in this repo after its gate.
 
 ### Slice 1 — Freeze assets
 
-- On-chain verify the three candidate addresses (bytecode, decimals, symbols, fresh positive oracle round).
-- Write verified values into `.env.example` as comments and into `DEPLOYMENT_INFO.md` as “intended public pair (unseeded until slice 2)”.
-- Do not broadcast.
-
-**Done when:** a later agent can fill `SISU_WETH_ADDRESS` / `SISU_USDC_ADDRESS` / `SISU_ORACLE_ADDRESS` from docs without guessing.
+**Done 2026-09-16.** Addresses, decimals, and a fresh ETH/USD round are in `.env.example` and `DEPLOYMENT_INFO.md`. No broadcast.
 
 ### Slice 2 — Deploy featured book (no mocks)
 
