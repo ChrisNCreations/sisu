@@ -12,6 +12,8 @@ Git root is this directory. The parent `SIsu/` folder is not a repo.
 
 **Build / seed / demo.** `../docs/specs/build.md`
 
+**Public Sepolia product.** `docs/PUBLIC_TESTNET.md` — no Sisu mocks on a public network; featured book + any maker may ship.
+
 **Major-step commit.** After a completed feature, fix, or build-order step (not WIP, not every file save):
 
 1. Contract or test changes: `npx hardhat test` green.
