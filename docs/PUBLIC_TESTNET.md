@@ -120,14 +120,9 @@ Each slice is one conventional commit in this repo after its gate.
 
 ### Slice 2 — Deploy featured book (no mocks)
 
-- `npm run deploy:sisu:sepolia` with `SISU_ALLOW_LIVE_DEPLOYMENT=true` and the frozen assets.
-- Distinct `SISU_MAKER_PRIVATE_KEY` (not the trader). Maker holds WETH + Circle USDC, approves Aqua, ships one 50/50 book.
-- `npm run validate:deployment:sepolia`.
-- Verify SisuStrategy + router on Etherscan (hardhat-verify built-in v2; do not re-add a Sepolia `customChains` entry).
-- `scripts/verify-trader.ts` with a **different** trader key: safe swap settles, unsafe reverts, balances unchanged.
-- Write `web/lib/deployment.json` locally (gitignored). Publish addresses + strategy hash + order in `DEPLOYMENT_INFO.md`.
+**Mostly done 2026-09-16.** Aqua / SisuStrategy / router are on Sepolia with Uniswap WETH. Featured book already shipped (1 WETH + 3000 USDC virtual). `validate:deployment:sepolia` green. Manifest written locally (gitignored). Addresses in `DEPLOYMENT_INFO.md`.
 
-**Done when:** Etherscan shows verified Sisu contracts, Circle USDC and Uniswap WETH (not TokenMock), and a two-key smoke receipt.
+Still open: Etherscan source verify of the new Strategy/Router if not already green; `verify-trader.ts` still assumes Hardhat signer #2 and 18-decimal ETH — do not use it on Sepolia until it reads `SISU_TRADER_PRIVATE_KEY` and 6-decimal USDC.
 
 ### Slice 3 — Public client
 

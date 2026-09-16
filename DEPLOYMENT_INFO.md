@@ -7,11 +7,11 @@ Where Sisu is deployed, with what seed, and where to click.
 | Network   | RPC | Chain | Status |
 |-----------|-----|-------|--------|
 | Hardhat local | `http://127.0.0.1:8545` | 31337 | Live seed path (mocks) |
-| Sepolia | `SEPOLIA_RPC_URL` from `.env` | 11155111 | Pair frozen 2026-09-16. Featured book **not yet seeded**. 2026-09-11 TokenMock seed is historical. |
+| Sepolia | `SEPOLIA_RPC_URL` from `.env` | 11155111 | Pair frozen. Featured book **shipped** (1 WETH + 3000 USDC). 2026-09-11 TokenMock seed is historical. |
 
-## Intended public pair (Sepolia, unseeded until slice 2)
+## Public pair and featured book (Sepolia)
 
-Verified read-only on 2026-09-16 against `https://ethereum-sepolia-rpc.publicnode.com` (chain 11155111). No transactions were sent. Fill `SISU_*` from `.env.example`.
+Pair verified read-only 2026-09-16. Sisu contracts and the featured book are live. Tokens stay in the maker wallet; Aqua virtual balances are 1 WETH + 3000 USDC. `npm run validate:deployment:sepolia` passed.
 
 | Asset | Source | Address | On-chain |
 |-------|--------|---------|----------|
@@ -21,7 +21,23 @@ Verified read-only on 2026-09-16 against `https://ethereum-sepolia-rpc.publicnod
 
 Heartbeat 3600s, `SISU_ORACLE_MAX_STALENESS=7200`. Do not deploy `WETHMock`, `TokenMock`, or `MockAggregatorV3` on this network. Testnet USDC has no dollar backing.
 
-Sisu product contracts for this pair are **not deployed yet**. Slice 2 of `docs/PUBLIC_TESTNET.md` ships the featured book.
+### Featured book (live)
+
+Maker `0x25D8bE971f8c5E7C6aFC8645a08D43B506A8e051` (distinct from deployer). Policy: maxRisk 60% (`6e8`), baseFee 30 bps, maxFee 100 bps, strength `1e9`, salt 1, maxStaleness 86400.
+
+Strategy hash:
+
+`0xdb8f8ff8a9e2d6452842502ce4a9b7118f4c9c25ca08bc816f472742f6173443`
+
+| Contract | Address | Explorer |
+|----------|---------|----------|
+| Aqua | `0x386C5f161AA20Cc3bb8A91a2C99c26272D023A6E` | https://sepolia.etherscan.io/address/0x386C5f161AA20Cc3bb8A91a2C99c26272D023A6E |
+| SisuStrategy | `0x013F9ef10921d9FDC8530b85681488303964CfF7` | https://sepolia.etherscan.io/address/0x013F9ef10921d9FDC8530b85681488303964CfF7 |
+| SisuSwapVMRouter | `0x018F2e43dC538A1E76370fd8d6FDA7e6E554f471` | https://sepolia.etherscan.io/address/0x018F2e43dC538A1E76370fd8d6FDA7e6E554f471 |
+
+Router constructor WETH is the Uniswap Sepolia WETH9 above. Testnet liquidity is experimental — do not deposit valuable assets.
+
+A leftover `WETHMock` artifact exists under `deployments/sepolia/` and is **not** the product ETH leg.
 
 ## Local seed (`scripts/setup-ui.ts --network localhost`)
 
